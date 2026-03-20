@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard</title>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+background:#f2f2f2;
+}
+
+.header{
+background:#007bff;
+color:white;
+padding:20px;
+text-align:center;
+}
+
+.container{
+width:90%;
+margin:auto;
+margin-top:40px;
+}
+
+.cards{
+display:flex;
+flex-wrap:wrap;
+justify-content:space-around;
+}
+
+.card{
+background:white;
+width:250px;
+padding:20px;
+margin:20px;
+text-align:center;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+transition:0.3s;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:80px;
+height:80px;
+margin-bottom:10px;
+}
+
+.card h3{
+margin:10px 0;
+}
+
+.card a{
+text-decoration:none;
+background:#007bff;
+color:white;
+padding:10px 15px;
+border-radius:5px;
+display:inline-block;
+margin-top:10px;
+}
+
+.card a:hover{
+background:#0056b3;
+}
+
+.footer{
+text-align:center;
+margin-top:40px;
+padding:10px;
+background:#ddd;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h2>Student Feedback Management System</h2>
+<h3>Student Dashboard</h3>
+</div>
+
+<div class="container">
+
+<div class="cards">
+
+<!-- Give Feedback -->
+
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1828/1828919.png">
+
+<h3>Give Feedback</h3>
+
+<p>Submit feedback for your faculty subjects.</p>
+
+<a href="give-feedback.html">Open</a>
+
+</div>
+
+
+<!-- View Feedback Status -->
+
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png">
+
+<h3>Feedback Status</h3>
+
+<p>Check submitted feedback status.</p>
+
+<a href="view-feedback-status.html">View</a>
+
+</div>
+
+
+<!-- Student Profile -->
+
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<h3>My Profile</h3>
+
+<p>View student information.</p>
+
+<a href="student-profile.html">Open</a>
+
+</div>
+
+
+<!-- Logout -->
+
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1828/1828479.png">
+
+<h3>Logout</h3>
+
+<p>Exit from the system.</p>
+
+<a href="student-login.html">Logout</a>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="footer">
+<p>© 2026 Student Feedback System</p>
+</div>
+
+</body>
+</html>

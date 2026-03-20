@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Admin Dashboard</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f4f6f9;
+}
+
+/* Top Navbar */
+
+.navbar{
+background:#2c3e50;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+position:relative;
+}
+
+/* Logout Button */
+
+.logout{
+position:absolute;
+right:20px;
+top:12px;
+background:red;
+color:white;
+padding:8px 15px;
+border-radius:5px;
+text-decoration:none;
+font-size:14px;
+}
+
+/* Dashboard Container */
+
+.container{
+padding:40px;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:30px;
+max-width:1200px;
+margin:auto;
+}
+
+/* Dashboard Cards */
+
+.card{
+background:white;
+padding:40px;
+border-radius:10px;
+text-align:center;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+transition:0.3s;
+cursor:pointer;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:80px;
+margin-bottom:15px;
+}
+
+.card h3{
+margin:0;
+color:#333;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+
+Admin Dashboard
+
+<a href="admin-login.html" class="logout">Logout</a>
+
+</div>
+
+<div class="container">
+
+<!-- Add Student -->
+
+<div class="card" onclick="openPage('add-student.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png">
+
+<h3>Add Student</h3>
+
+</div>
+
+<!-- Add Faculty -->
+
+<div class="card" onclick="openPage('add-faculty.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1995/1995574.png">
+
+<h3>Add Faculty</h3>
+
+</div>
+
+<!-- Manage Students -->
+
+<div class="card" onclick="openPage('manage-students.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135789.png">
+
+<h3>Manage Students</h3>
+
+</div>
+
+<!-- Manage Faculty -->
+
+<div class="card" onclick="openPage('manage-faculty.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1995/1995515.png">
+
+<h3>Manage Faculty</h3>
+
+</div>
+
+<!-- Manage Courses -->
+
+<div class="card" onclick="openPage('manage-courses.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<h3>Manage Courses</h3>
+
+</div>
+
+<!-- Assign Courses -->
+
+<div class="card" onclick="openPage('assign-courses.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/2910/2910791.png">
+
+<h3>Assign Courses</h3>
+
+</div>
+
+<!-- View Feedback -->
+
+<div class="card" onclick="openPage('view-feedback.html')">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1828/1828884.png">
+
+<h3>View Feedback</h3>
+
+</div>
+
+</div>
+
+<script>
+
+function openPage(page){
+window.location.href = page;
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,56 @@
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Configuration files with credentials (keep .example files)
+config/email_config.php
+config/email_sender.php
+
+# Log files
+*.log
+error_log
+debug.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# Test files (if you add any later)
+test_*.php
+test_*.html
+*_test.php
+debug_*.php
+check_*.php
+
+# Backup files
+*.backup
+*.old
+
+# Environment files (if you add any)
+.env
+.env.local
+
+# Composer (if you use it later)
+/vendor/
+composer.lock
+
+# Node modules (if you add any)
+node_modules/
+
+# Upload directories (if you add file uploads)
+uploads/
+temp/
+
+# Database backups
+*.sql.backup
+backup/

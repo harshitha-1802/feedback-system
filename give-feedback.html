@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Give Feedback</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+}
+
+.container{
+width:90%;
+margin:auto;
+background:white;
+padding:30px;
+margin-top:40px;
+box-shadow:0 0 10px gray;
+}
+
+h2{
+text-align:center;
+}
+
+.info{
+text-align:center;
+margin:20px 0;
+font-size:16px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #ccc;
+padding:10px;
+text-align:center;
+}
+
+th{
+background:#007bff;
+color:white;
+}
+
+select,textarea{
+width:100%;
+padding:5px;
+}
+
+select.error-field{
+border:2px solid red;
+}
+
+button{
+margin-top:20px;
+padding:12px 25px;
+background:#007bff;
+color:white;
+border:none;
+cursor:pointer;
+font-size:16px;
+}
+
+button:hover{
+background:#0056b3;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.message{
+text-align:center;
+margin-top:20px;
+font-size:16px;
+font-weight:bold;
+}
+
+.error{
+color:red;
+}
+
+.success{
+color:green;
+}
+
+.warning{
+color:orange;
+text-align:center;
+margin:20px;
+padding:15px;
+background:#fff3cd;
+border:1px solid orange;
+border-radius:5px;
+}
+
+.already-submitted{
+color:green;
+text-align:center;
+margin:40px;
+padding:30px;
+background:#d4edda;
+border:1px solid green;
+border-radius:10px;
+font-size:18px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Student Feedback Form</h2>
+
+<div class="info" id="studentInfo">
+<p>Loading...</p>
+</div>
+
+<div id="feedbackContent">
+<p style="text-align:center;color:gray;">Loading courses...</p>
+</div>
+
+</div>
+
+<script>
+
+let coursesData = [];
+let studentData = {};
+
+async function loadStudentCourses() {
+    try {
+        const response = await fetch('api/student/get_courses.php');
+        const result = await response.json();
+        
+        if (result.success) {
+            studentData = result.student_info;
+            coursesData = result.courses;
+            
+            document.getElementById('studentInfo').innerHTML = 
+                `<p><b>Department:</b> ${studentData.department} | <b>Semester:</b> ${studentData.semester}</p>`;
+            
+            if (coursesData.length === 0) {
+                document.getElementById('feedbackContent').innerHTML = 
+                    '<div class="warning">No courses assigned to you yet. Please contact admin.</div>';
+                return;
+            }
+            
+            // Check if already submitted
+            if (result.all_feedback_submitted) {
+                document.getElementById('feedbackContent').innerHTML = 
+                    '<div class="already-submitted">✅ You have already submitted feedback for all your courses this semester.<br><br>Thank you for your valuable feedback!<br><br><button onclick="goBack()">Go to Dashboard</button></div>';
+                return;
+            }
+            
+            displayFeedbackForm();
+        } else {
+            document.getElementById('feedbackContent').innerHTML = 
+                '<div class="error message">' + result.message + '</div>';
+        }
+    } catch (error) {
+        document.getElementById('feedbackContent').innerHTML = 
+            '<div class="error message">Failed to load courses. Please try again.</div>';
+    }
+}
+
+function displayFeedbackForm() {
+    let tableHTML = `
+        <table id="feedbackTable">
+        <tr>
+            <th>Subject</th>
+            <th>Faculty</th>
+            <th>Teaching Quality</th>
+            <th>Communication</th>
+            <th>Subject Knowledge</th>
+            <th>Punctuality</th>
+            <th>Comments</th>
+        </tr>
+    `;
+    
+    coursesData.forEach((course, index) => {
+        if (course.feedback_submitted) {
+            tableHTML += `
+                <tr style="background:#d4edda;">
+                    <td>${course.course_name}</td>
+                    <td>${course.faculty_name}</td>
+                    <td colspan="5" style="color:green;font-weight:bold;">✅ Feedback Already Submitted</td>
+                </tr>
+            `;
+        } else {
+            tableHTML += `
+                <tr>
+                    <td>${course.course_name}</td>
+                    <td>${course.faculty_name}</td>
+                    <td>
+                        <select id="teaching_${index}" data-index="${index}" onchange="validateForm()">
+                            <option value="">-- Select --</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good</option>
+                            <option value="Average">Average</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select id="communication_${index}" data-index="${index}" onchange="validateForm()">
+                            <option value="">-- Select --</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good</option>
+                            <option value="Average">Average</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select id="knowledge_${index}" data-index="${index}" onchange="validateForm()">
+                            <option value="">-- Select --</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good</option>
+                            <option value="Average">Average</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select id="punctuality_${index}" data-index="${index}" onchange="validateForm()">
+                            <option value="">-- Select --</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good</option>
+                            <option value="Average">Average</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </td>
+                    <td>
+                        <textarea id="comments_${index}" rows="2" placeholder="Optional comments"></textarea>
+                    </td>
+                </tr>
+            `;
+        }
+    });
+    
+    tableHTML += '</table>';
+    
+    tableHTML += `
+        <div id="validationMessage" class="error message" style="display:none;"></div>
+        <center>
+            <button id="submitBtn" onclick="submitAllFeedback()" disabled>Submit All Feedback</button>
+            <button onclick="goBack()" style="background:gray;margin-left:10px;">Cancel</button>
+        </center>
+    `;
+    
+    document.getElementById('feedbackContent').innerHTML = tableHTML;
+}
+
+function validateForm() {
+    const submitBtn = document.getElementById('submitBtn');
+    const validationMsg = document.getElementById('validationMessage');
+    let allFilled = true;
+    let missingFields = [];
+    
+    // Remove previous error styling
+    document.querySelectorAll('select').forEach(sel => sel.classList.remove('error-field'));
+    
+    coursesData.forEach((course, index) => {
+        if (!course.feedback_submitted) {
+            const teaching = document.getElementById(`teaching_${index}`);
+            const communication = document.getElementById(`communication_${index}`);
+            const knowledge = document.getElementById(`knowledge_${index}`);
+            const punctuality = document.getElementById(`punctuality_${index}`);
+            
+            if (!teaching.value || !communication.value || !knowledge.value || !punctuality.value) {
+                allFilled = false;
+                if (!teaching.value) teaching.classList.add('error-field');
+                if (!communication.value) communication.classList.add('error-field');
+                if (!knowledge.value) knowledge.classList.add('error-field');
+                if (!punctuality.value) punctuality.classList.add('error-field');
+                missingFields.push(course.course_name);
+            }
+        }
+    });
+    
+    if (allFilled) {
+        submitBtn.disabled = false;
+        validationMsg.style.display = 'none';
+    } else {
+        submitBtn.disabled = true;
+        validationMsg.textContent = '⚠️ Please fill all ratings for: ' + missingFields.join(', ');
+        validationMsg.style.display = 'block';
+    }
+}
+
+async function submitAllFeedback() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    
+    let feedbackArray = [];
+    
+    coursesData.forEach((course, index) => {
+        if (!course.feedback_submitted) {
+            feedbackArray.push({
+                faculty_id: course.faculty_id,
+                course_id: course.course_id,
+                semester: studentData.semester,
+                teaching_quality: document.getElementById(`teaching_${index}`).value,
+                communication: document.getElementById(`communication_${index}`).value,
+                subject_knowledge: document.getElementById(`knowledge_${index}`).value,
+                punctuality: document.getElementById(`punctuality_${index}`).value,
+                comments: document.getElementById(`comments_${index}`).value
+            });
+        }
+    });
+    
+    try {
+        const response = await fetch('api/student/submit_feedback.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ feedbacks: feedbackArray })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Feedback submitted successfully!\n\nThank you for your valuable feedback.');
+            window.location.href = 'student-dashboard.html';
+        } else {
+            alert('❌ ' + result.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit All Feedback';
+        }
+    } catch (error) {
+        alert('❌ Failed to submit feedback. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit All Feedback';
+    }
+}
+
+function goBack() {
+    window.location.href = 'student-dashboard.html';
+}
+
+// Load courses when page loads
+window.onload = loadStudentCourses;
+
+</script>
+
+</body>
+</html>

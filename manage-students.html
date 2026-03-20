@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Students</title>
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#f4f6f9;
+}
+
+.navbar{
+background:#2c3e50;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+position:relative;
+}
+
+.back-btn{
+position:absolute;
+left:20px;
+top:12px;
+background:#3498db;
+color:white;
+padding:8px 15px;
+border-radius:5px;
+text-decoration:none;
+font-size:14px;
+}
+
+.container{
+padding:20px;
+max-width:1200px;
+margin:auto;
+}
+
+.search-box{
+background:white;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+.search-box input{
+width:300px;
+padding:10px;
+border:1px solid #ddd;
+border-radius:5px;
+margin-right:10px;
+}
+
+.search-box button{
+padding:10px 20px;
+background:#3498db;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.students-table{
+background:white;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+overflow:hidden;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th{
+background:#34495e;
+color:white;
+padding:15px;
+text-align:left;
+}
+
+td{
+padding:12px 15px;
+border-bottom:1px solid #eee;
+}
+
+tr:hover{
+background:#f8f9fa;
+}
+
+.btn{
+padding:6px 12px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+margin-right:5px;
+font-size:12px;
+}
+
+.btn-edit{
+background:#f39c12;
+color:white;
+}
+
+.btn-delete{
+background:#e74c3c;
+color:white;
+}
+
+.btn-edit:hover{
+background:#e67e22;
+}
+
+.btn-delete:hover{
+background:#c0392b;
+}
+
+.status-active{
+color:#27ae60;
+font-weight:bold;
+}
+
+.status-inactive{
+color:#e74c3c;
+font-weight:bold;
+}
+
+.loading{
+text-align:center;
+padding:50px;
+color:#666;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+Manage Students
+<a href="admin-dashboard.html" class="back-btn">← Back</a>
+</div>
+
+<div class="container">
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="Search by Student ID, Name, or Email...">
+<button onclick="searchStudents()">Search</button>
+<button onclick="loadAllStudents()" style="background:#27ae60;">Show All</button>
+</div>
+
+<div class="students-table">
+<table>
+<thead>
+<tr>
+<th>Student ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Phone</th>
+<th>Department</th>
+<th>Semester</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="studentsTableBody">
+<tr>
+<td colspan="8" class="loading">Loading students...</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<script>
+// Load all students on page load
+document.addEventListener('DOMContentLoaded', function() {
+loadAllStudents();
+});
+
+function loadAllStudents() {
+fetch('api/admin/get_all_students.php')
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+displayStudents(data.students);
+} else {
+document.getElementById('studentsTableBody').innerHTML = 
+'<tr><td colspan="8" style="text-align:center;color:red;">Error: ' + data.message + '</td></tr>';
+}
+})
+.catch(error => {
+document.getElementById('studentsTableBody').innerHTML = 
+'<tr><td colspan="8" style="text-align:center;color:red;">Error loading students</td></tr>';
+});
+}
+
+function displayStudents(students) {
+const tbody = document.getElementById('studentsTableBody');
+if (students.length === 0) {
+tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No students found</td></tr>';
+return;
+}
+
+tbody.innerHTML = students.map(student => `
+<tr>
+<td>${student.student_id}</td>
+<td>${student.name}</td>
+<td>${student.email}</td>
+<td>${student.phone}</td>
+<td>${student.dept_name}</td>
+<td>${student.semester}</td>
+<td><span class="status-${student.is_active == 1 ? 'active' : 'inactive'}">
+${student.is_active == 1 ? 'Active' : 'Inactive'}
+</span></td>
+<td>
+<button class="btn btn-edit" onclick="editStudent('${student.student_id}')">Edit</button>
+<button class="btn btn-delete" onclick="deleteStudent('${student.student_id}', '${student.name}')">Delete</button>
+</td>
+</tr>
+`).join('');
+}
+
+function searchStudents() {
+const searchTerm = document.getElementById('searchInput').value.trim();
+if (searchTerm === '') {
+loadAllStudents();
+return;
+}
+
+const tbody = document.getElementById('studentsTableBody');
+tbody.innerHTML = '<tr><td colspan="8" class="loading">Searching...</td></tr>';
+
+fetch('api/admin/get_all_students.php')
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const filtered = data.students.filter(student => 
+student.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+student.email.toLowerCase().includes(searchTerm.toLowerCase())
+);
+displayStudents(filtered);
+}
+});
+}
+
+function editStudent(studentId) {
+// Redirect to edit page with student ID
+window.location.href = `edit-student.html?id=${studentId}`;
+}
+
+function deleteStudent(studentId, studentName) {
+if (!confirm(`Are you sure you want to delete student "${studentName}" (${studentId})?\n\nThis action cannot be undone.`)) {
+return;
+}
+
+fetch('api/admin/delete_student.php', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/x-www-form-urlencoded',
+},
+body: `student_id=${studentId}`
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+alert('Student deleted successfully!');
+loadAllStudents(); // Reload the table
+} else {
+alert('Error: ' + data.message);
+}
+})
+.catch(error => {
+alert('Error deleting student');
+});
+}
+
+// Enter key search
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+if (e.key === 'Enter') {
+searchStudents();
+}
+});
+</script>
+
+</body>
+</html>

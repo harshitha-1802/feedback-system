@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Feedback Analysis</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+background-image:url("https://images.unsplash.com/photo-1503676382389-a1c2e315a42f");
+background-size:cover;
+background-position:center;
+}
+
+/* Container */
+
+.container{
+width:85%;
+margin:auto;
+margin-top:40px;
+background:rgba(255,255,255,0.97);
+padding:30px;
+border-radius:15px;
+box-shadow:0 0 15px gray;
+text-align:center;
+}
+
+/* Back Button */
+
+.back{
+padding:10px 20px;
+background:#6c757d;
+color:white;
+border:none;
+cursor:pointer;
+margin-bottom:20px;
+border-radius:5px;
+}
+
+/* Chart Box */
+
+.chartBox{
+width:400px;
+margin:auto;
+padding:20px;
+background:white;
+border-radius:15px;
+box-shadow:0 0 10px gray;
+}
+
+/* Feedback Section */
+
+.infoBox{
+margin-top:30px;
+text-align:left;
+background:#f8f9fa;
+padding:20px;
+border-radius:10px;
+box-shadow:0 0 8px gray;
+}
+
+.infoBox h3{
+color:#007bff;
+}
+
+.infoBox p{
+background:white;
+padding:10px;
+border-radius:6px;
+margin-top:10px;
+box-shadow:0 0 5px gray;
+}
+
+.header-img{
+width:120px;
+margin-bottom:15px;
+}
+
+</style>
+
+</head>
+
+<body onload="loadFacultyFeedback()">
+
+<div class="container" id="mainContainer">
+
+<button class="back" onclick="goBack()">← Dashboard</button>
+
+<br>
+
+<img class="header-img"
+src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<h2>Faculty Feedback Analysis &#128522;</h2>
+
+<div id="loadingMessage" style="padding:40px;font-size:18px;color:#666;">
+Loading feedback data...
+</div>
+
+<div id="noFeedbackMessage" style="display:none;padding:40px;background:#fff3cd;border:2px solid #ffc107;border-radius:10px;margin:20px 0;">
+<h3 style="color:#856404;">📭 No Feedback Yet</h3>
+<p style="font-size:16px;color:#856404;">You haven't received any feedback from students yet.</p>
+<p style="font-size:14px;color:#856404;">Students will be able to submit feedback for your courses, and it will appear here.</p>
+</div>
+
+<div id="feedbackContent" style="display:none;">
+
+<h3 id="facultyName">Faculty: Loading...</h3>
+
+<div class="chartBox">
+<canvas id="feedbackChart"></canvas>
+</div>
+
+<!-- Statistics -->
+<div class="infoBox">
+<h3>📊 Feedback Statistics</h3>
+<p id="totalFeedback">Total Feedback Received: 0</p>
+<p id="avgRating">Average Overall Rating: 0.0 / 4.0</p>
+</div>
+
+<!-- Criteria Ratings -->
+<div class="infoBox">
+<h3>⭐ Rating Criteria (Average)</h3>
+<p id="avgTeaching">Teaching Quality: 0.0 / 4.0</p>
+<p id="avgCommunication">Communication: 0.0 / 4.0</p>
+<p id="avgKnowledge">Subject Knowledge: 0.0 / 4.0</p>
+<p id="avgPunctuality">Punctuality: 0.0 / 4.0</p>
+</div>
+
+<!-- Comments -->
+<div class="infoBox">
+<h3>📝 Student Comments</h3>
+<div id="commentsList"></div>
+</div>
+
+<!-- Detailed Feedback -->
+<div class="infoBox">
+<h3>📋 Detailed Feedback</h3>
+<div id="feedbackList"></div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function goBack(){
+    window.location.href="faculty-dashboard.html";
+}
+
+let chart;
+
+async function loadFacultyFeedback(){
+    try {
+        const response = await fetch('api/faculty/view_feedback.php', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        
+        document.getElementById('loadingMessage').style.display = 'none';
+        
+        if (result.success) {
+            if (result.data.length === 0) {
+                // No feedback received yet
+                document.getElementById('noFeedbackMessage').style.display = 'block';
+                document.getElementById('feedbackContent').style.display = 'none';
+            } else {
+                // Display feedback
+                document.getElementById('noFeedbackMessage').style.display = 'none';
+                document.getElementById('feedbackContent').style.display = 'block';
+                
+                displayFeedbackData(result.data, result.averages);
+            }
+        } else {
+            alert('Failed to load feedback: ' + result.message);
+        }
+    } catch (error) {
+        document.getElementById('loadingMessage').innerHTML = 
+            '<p style="color:red;">Failed to load feedback data. Please try again.</p>';
+    }
+}
+
+function displayFeedbackData(feedbacks, averages) {
+    // Display statistics
+    document.getElementById('totalFeedback').textContent = 
+        'Total Feedback Received: ' + averages.total_feedback;
+    
+    const avgOverall = ((parseFloat(averages.avg_teaching) + 
+                        parseFloat(averages.avg_communication) + 
+                        parseFloat(averages.avg_knowledge) + 
+                        parseFloat(averages.avg_punctuality)) / 4).toFixed(2);
+    
+    document.getElementById('avgRating').textContent = 
+        'Average Overall Rating: ' + avgOverall + ' / 4.0';
+    
+    // Display average ratings
+    document.getElementById('avgTeaching').textContent = 
+        'Teaching Quality: ' + parseFloat(averages.avg_teaching).toFixed(2) + ' / 4.0';
+    document.getElementById('avgCommunication').textContent = 
+        'Communication: ' + parseFloat(averages.avg_communication).toFixed(2) + ' / 4.0';
+    document.getElementById('avgKnowledge').textContent = 
+        'Subject Knowledge: ' + parseFloat(averages.avg_knowledge).toFixed(2) + ' / 4.0';
+    document.getElementById('avgPunctuality').textContent = 
+        'Punctuality: ' + parseFloat(averages.avg_punctuality).toFixed(2) + ' / 4.0';
+    
+    // Display comments
+    const commentsList = document.getElementById('commentsList');
+    commentsList.innerHTML = '';
+    
+    let hasComments = false;
+    feedbacks.forEach(feedback => {
+        if (feedback.comments && feedback.comments.trim() !== '') {
+            hasComments = true;
+            const commentP = document.createElement('p');
+            commentP.style.background = 'white';
+            commentP.style.padding = '10px';
+            commentP.style.borderRadius = '6px';
+            commentP.style.marginTop = '10px';
+            commentP.textContent = '💬 ' + feedback.comments;
+            commentsList.appendChild(commentP);
+        }
+    });
+    
+    if (!hasComments) {
+        commentsList.innerHTML = '<p style="color:#666;font-style:italic;">No comments provided yet.</p>';
+    }
+    
+    // Display detailed feedback
+    const feedbackList = document.getElementById('feedbackList');
+    feedbackList.innerHTML = '';
+    
+    feedbacks.forEach((feedback, index) => {
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.style.background = 'white';
+        feedbackDiv.style.padding = '15px';
+        feedbackDiv.style.borderRadius = '8px';
+        feedbackDiv.style.marginTop = '15px';
+        feedbackDiv.style.border = '1px solid #ddd';
+        
+        feedbackDiv.innerHTML = `
+            <h4 style="color:#007bff;margin-top:0;">Feedback #${index + 1} - ${feedback.course_name}</h4>
+            <p><strong>Submitted:</strong> ${new Date(feedback.submitted_at).toLocaleDateString()}</p>
+            <p><strong>Teaching Quality:</strong> ${feedback.teaching_quality}</p>
+            <p><strong>Communication:</strong> ${feedback.communication}</p>
+            <p><strong>Subject Knowledge:</strong> ${feedback.subject_knowledge}</p>
+            <p><strong>Punctuality:</strong> ${feedback.punctuality}</p>
+        `;
+        
+        feedbackList.appendChild(feedbackDiv);
+    });
+    
+    // Load chart
+    loadChart(averages);
+}
+
+function loadChart(averages) {
+    const ctx = document.getElementById('feedbackChart');
+    
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Teaching Quality', 'Communication', 'Subject Knowledge', 'Punctuality'],
+            datasets: [{
+                label: 'Average Rating (out of 4)',
+                data: [
+                    parseFloat(averages.avg_teaching).toFixed(2),
+                    parseFloat(averages.avg_communication).toFixed(2),
+                    parseFloat(averages.avg_knowledge).toFixed(2),
+                    parseFloat(averages.avg_punctuality).toFixed(2)
+                ],
+                backgroundColor: [
+                    '#28a745',
+                    '#007bff',
+                    '#ffc107',
+                    '#dc3545'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 4
+                }
+            }
+        }
+    });
+}
+
+// Load feedback when page loads
+window.onload = loadFacultyFeedback;
+
+</script>
+
+</body>
+</html>

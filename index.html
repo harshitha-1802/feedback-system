@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Page Title -->
+<title>Student Feedback Management System</title>
+
+<!-- CSS Styling -->
+<style>
+
+/* Remove default margin */
+body{
+margin:0;
+font-family:Arial, sans-serif;
+scroll-behavior:smooth;
+background:#f4f6f9;
+}
+
+/* Header */
+header{
+background:#003366;
+color:white;
+text-align:center;
+padding:20px;
+font-size:28px;
+font-weight:bold;
+}
+
+/* Hero section */
+.hero{
+height:90vh;
+background-image:url("https://images.unsplash.com/photo-1523240795612-9a054b0db644");
+background-size:cover;
+background-position:center;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+color:white;
+text-align:center;
+}
+
+/* Hero title */
+.hero h1{
+font-size:40px;
+}
+
+/* Scroll button */
+.hero button{
+padding:12px 25px;
+font-size:18px;
+border:none;
+background:#007bff;
+color:white;
+border-radius:6px;
+cursor:pointer;
+margin-top:20px;
+}
+
+.hero button:hover{
+background:#0056b3;
+}
+
+/* Module section */
+.modules{
+padding:60px;
+text-align:center;
+}
+
+/* Module container */
+.module-container{
+display:flex;
+justify-content:center;
+flex-wrap:wrap;
+gap:30px;
+margin-top:40px;
+}
+
+/* Module card */
+.card{
+background:white;
+width:260px;
+padding:25px;
+border-radius:10px;
+box-shadow:0 0 10px gray;
+}
+
+/* Module icons */
+.card img{
+width:90px;
+margin-bottom:15px;
+}
+
+/* Button */
+.card button{
+padding:10px 20px;
+background:#28a745;
+border:none;
+color:white;
+border-radius:5px;
+cursor:pointer;
+margin-top:10px;
+}
+
+.card button:hover{
+background:#1e7e34;
+}
+
+/* Footer */
+footer{
+background:#003366;
+color:white;
+text-align:center;
+padding:15px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<!-- HEADER -->
+<header>
+Student Feedback Management System
+</header>
+
+
+<!-- HERO SECTION -->
+<section class="hero">
+
+<h1>Welcome to Student Feedback Portal</h1>
+
+<p>Enhancing teaching quality through student feedback</p>
+
+<button onclick="location.href='#modules'">
+Explore Modules
+</button>
+
+</section>
+
+
+<!-- MODULE SECTION -->
+<section class="modules" id="modules">
+
+<h2>Select Your Module</h2>
+
+<div class="module-container">
+
+
+<!-- ADMIN MODULE -->
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3064/3064197.png">
+
+<h3>Admin Module</h3>
+
+<p>Manage students, faculty, subjects and courses.</p>
+
+<button onclick="location.href='admin-login.html'">
+Admin Login
+</button>
+
+</div>
+
+
+<!-- FACULTY MODULE -->
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<h3>Faculty Module</h3>
+
+<p>View feedback given by students.</p>
+
+<button onclick="location.href='faculty-login.html'">
+Faculty Login
+</button>
+
+</div>
+
+
+<!-- STUDENT MODULE -->
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png">
+
+<h3>Student Module</h3>
+
+<p>Submit feedback for your faculty.</p>
+
+<button onclick="location.href='student-login.html'">
+Student Login
+</button>
+
+</div>
+
+
+</div>
+
+</section>
+
+
+<!-- FOOTER -->
+<footer>
+
+© 2026 Student Feedback Management System
+
+</footer>
+
+
+</body>
+</html>

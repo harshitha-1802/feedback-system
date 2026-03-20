@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Faculty</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#eef2f7;
+margin:0;
+}
+
+.navbar{
+background:#34495e;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.container{
+width:420px;
+background:white;
+margin:40px auto;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px gray;
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+border:1px solid gray;
+}
+
+button{
+margin-top:15px;
+width:100%;
+padding:10px;
+background:#007bff;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.error{
+color:red;
+font-size:13px;
+}
+
+</style>
+
+<script>
+
+function blockStartSpace(e){
+if(e.target.value.length==0 && e.key===" ")
+e.preventDefault()
+}
+
+function lettersSpace(e){
+if(!/[a-zA-Z ]/.test(e.key))
+e.preventDefault()
+}
+
+function lettersNumbers(e){
+if(!/[a-zA-Z0-9]/.test(e.key))
+e.preventDefault()
+}
+
+function digitsOnly(e){
+if(!/[0-9]/.test(e.key))
+e.preventDefault()
+}
+
+function noSpace(e){
+if(e.key===" ")
+e.preventDefault()
+}
+
+function validateName(){
+
+let name=document.getElementById("name").value
+let regex=/^[A-Za-z]+( [A-Za-z]+)*$/
+
+if(!regex.test(name))
+showError("nameError","Only letters allowed")
+else
+showError("nameError","")
+
+toggleSubmit()
+
+}
+
+function validateID(){
+
+let id=document.getElementById("fid").value
+let regex=/^[A-Za-z0-9]+( [A-Za-z0-9]+)?$/
+
+if(!regex.test(id))
+showError("idError","Invalid Faculty ID")
+else
+showError("idError","")
+
+toggleSubmit()
+
+}
+
+function validateEmail(){
+
+let email=document.getElementById("email").value
+let regex=/^[a-z0-9]+@bvrit\.ac\.in$/
+
+if(!regex.test(email))
+showError("emailError","Use @bvrit.ac.in email")
+else
+showError("emailError","")
+
+toggleSubmit()
+
+}
+
+function validatePhone(){
+
+let phone=document.getElementById("phone").value
+let regex=/^[0-9]{10}$/
+
+if(!regex.test(phone))
+showError("phoneError","Phone must be 10 digits")
+else
+showError("phoneError","")
+
+toggleSubmit()
+
+}
+
+function validatePassword(){
+
+let pass=document.getElementById("pass").value
+let regex=/^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{6,}$/
+
+if(!regex.test(pass))
+showError("passError","Upper, lower, special required")
+else
+showError("passError","")
+
+checkPasswordMatch()
+toggleSubmit()
+
+}
+
+function checkPasswordMatch(){
+
+let pass=document.getElementById("pass").value
+let cpass=document.getElementById("cpass").value
+
+if(pass!==cpass)
+showError("cpassError","Passwords do not match")
+else
+showError("cpassError","")
+
+toggleSubmit()
+
+}
+
+function showError(id,msg){
+document.getElementById(id).innerHTML=msg
+}
+
+function toggleSubmit(){
+
+let errors=document.querySelectorAll(".error")
+let btn=document.getElementById("submitBtn")
+
+for(let e of errors){
+if(e.innerHTML!=""){
+btn.disabled=true
+return
+}
+}
+
+btn.disabled=false
+
+}
+
+</script>
+
+</head>
+
+<body>
+
+<div class="navbar">Add Faculty</div>
+
+<div class="container">
+
+<h3>Faculty Registration</h3>
+
+<form>
+
+<label>Faculty Name</label>
+<input id="name" onkeypress="blockStartSpace(event);lettersSpace(event)" oninput="validateName()">
+<div class="error" id="nameError"></div>
+
+<label>Faculty ID</label>
+<input id="fid" onkeypress="blockStartSpace(event);lettersNumbers(event)" oninput="validateID()">
+<div class="error" id="idError"></div>
+
+<label>Email</label>
+<input id="email" onkeypress="blockStartSpace(event);lettersNumbers(event)" oninput="validateEmail()">
+<div class="error" id="emailError"></div>
+
+<label>Phone</label>
+<input id="phone" maxlength="10" onkeypress="blockStartSpace(event);digitsOnly(event)" oninput="validatePhone()">
+<div class="error" id="phoneError"></div>
+
+<label>Department</label>
+<select id="dept">
+<option>CSE</option>
+<option>IT</option>
+<option>ECE</option>
+<option>EEE</option>
+</select>
+
+<label>Password</label>
+<input type="password" id="pass" onkeypress="blockStartSpace(event);noSpace(event)" oninput="validatePassword()">
+<div class="error" id="passError"></div>
+
+<label>Confirm Password</label>
+<input type="password" id="cpass" onkeypress="blockStartSpace(event);noSpace(event)" oninput="checkPasswordMatch()">
+<div class="error" id="cpassError"></div>
+
+<button type="button" id="submitBtn" disabled onclick="addFaculty()">Add Faculty</button>
+
+<div id="message" style="margin-top:10px;font-weight:bold;"></div>
+
+</form>
+
+<script>
+async function addFaculty() {
+    const btn = document.getElementById('submitBtn');
+    const messageDiv = document.getElementById('message');
+    
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+    
+    const formData = new FormData();
+    formData.append('faculty_id', document.getElementById('fid').value);
+    formData.append('name', document.getElementById('name').value);
+    formData.append('email', document.getElementById('email').value);
+    formData.append('phone', document.getElementById('phone').value);
+    formData.append('department', document.getElementById('dept').value);
+    formData.append('password', document.getElementById('pass').value);
+    
+    try {
+        const response = await fetch('api/admin/add_faculty.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.style.color = 'green';
+            messageDiv.textContent = '✅ ' + data.message;
+            document.querySelector('form').reset();
+            btn.disabled = true;
+        } else {
+            messageDiv.style.color = 'red';
+            messageDiv.textContent = '❌ ' + data.message;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        messageDiv.style.color = 'red';
+        messageDiv.textContent = '❌ Failed to add faculty. Please try again.';
+        btn.disabled = false;
+    }
+    
+    btn.textContent = 'Add Faculty';
+}
+</script>
+
+</div>
+
+</body>
+</html>

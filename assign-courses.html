@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assign Courses to Faculty</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f9;
+margin:0;
+padding-bottom:50px;
+}
+
+.navbar{
+background:#e74c3c;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.container{
+width:90%;
+max-width:800px;
+margin:40px auto;
+}
+
+.assign-section{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+margin-bottom:30px;
+}
+
+.assignments-section{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+select{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+border:1px solid gray;
+box-sizing:border-box;
+}
+
+button{
+margin-top:15px;
+padding:10px 20px;
+background:#e74c3c;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#c0392b;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.back-btn{
+background:#6c757d;
+}
+
+.back-btn:hover{
+background:#5a6268;
+}
+
+.delete-btn{
+background:#dc3545;
+padding:5px 10px;
+font-size:14px;
+margin:0;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:12px;
+border:1px solid #ddd;
+text-align:left;
+}
+
+th{
+background:#e74c3c;
+color:white;
+}
+
+tr:hover{
+background:#f1f1f1;
+}
+
+.message{
+margin-top:10px;
+padding:10px;
+border-radius:5px;
+font-weight:bold;
+}
+
+.success{
+background:#d4edda;
+color:#155724;
+}
+
+.error{
+background:#f8d7da;
+color:#721c24;
+}
+
+.loading{
+text-align:center;
+padding:20px;
+color:#666;
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+border:1px solid gray;
+box-sizing:border-box;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+Assign Courses to Faculty
+</div>
+
+<div class="container">
+
+<button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
+
+<!-- Assign Course Section -->
+<div class="assign-section">
+<h3>Assign Course to Faculty</h3>
+
+<form id="assignForm">
+
+<label>Select Faculty</label>
+<select id="faculty_id" required>
+<option value="">Loading faculty...</option>
+</select>
+
+<label>Select Course/Subject</label>
+<select id="course_id" required>
+<option value="">Loading courses...</option>
+</select>
+
+<label>Semester</label>
+<select id="semester" required>
+<option value="">Select Semester</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+</select>
+
+<label>Academic Year</label>
+<input type="text" id="academic_year" placeholder="e.g., 2024-25" value="2024-25" required>
+
+<button type="submit" id="assignBtn">Assign Course</button>
+</form>
+
+<div id="assignMessage"></div>
+</div>
+
+<!-- View Assignments Section -->
+<div class="assignments-section">
+<h3>Current Course Assignments</h3>
+
+<div id="loadingMessage" class="loading">Loading assignments...</div>
+
+<div id="assignmentsTable" style="display:none;">
+<table>
+<thead>
+<tr>
+<th>Faculty</th>
+<th>Course</th>
+<th>Semester</th>
+<th>Academic Year</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="assignmentsBody"></tbody>
+</table>
+</div>
+
+<div id="noAssignmentsMessage" style="display:none;text-align:center;padding:40px;color:#666;">
+<p>No course assignments yet. Assign courses to faculty above!</p>
+</div>
+</div>
+
+</div>
+
+<script>
+
+function goBack(){
+    window.location.href = "admin-dashboard.html";
+}
+
+// Load data on page load
+window.onload = function() {
+    loadFaculty();
+    loadCourses();
+    loadAssignments();
+};
+
+async function loadFaculty() {
+    try {
+        const response = await fetch('api/admin/get_all_faculty.php', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        
+        const select = document.getElementById('faculty_id');
+        select.innerHTML = '<option value="">Select Faculty</option>';
+        
+        if (result.success && result.data.length > 0) {
+            result.data.forEach(faculty => {
+                const option = document.createElement('option');
+                option.value = faculty.faculty_id;
+                option.textContent = `${faculty.name} (${faculty.faculty_id}) - ${faculty.dept_name}`;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">No faculty found</option>';
+        }
+    } catch (error) {
+        console.error('Error loading faculty:', error);
+    }
+}
+
+async function loadCourses() {
+    try {
+        const response = await fetch('api/admin/manage_courses.php?action=list', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        
+        const select = document.getElementById('course_id');
+        select.innerHTML = '<option value="">Select Course</option>';
+        
+        if (result.success && result.data.length > 0) {
+            result.data.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.course_id;
+                option.textContent = `${course.course_code} - ${course.course_name} (${course.dept_code}, Sem ${course.semester})`;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">No courses found - Add courses first</option>';
+        }
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// Assign course form submission
+document.getElementById('assignForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const assignBtn = document.getElementById('assignBtn');
+    const messageDiv = document.getElementById('assignMessage');
+    
+    assignBtn.disabled = true;
+    assignBtn.textContent = 'Assigning...';
+    messageDiv.innerHTML = '';
+    
+    const formData = new FormData();
+    formData.append('faculty_id', document.getElementById('faculty_id').value);
+    formData.append('course_id', document.getElementById('course_id').value);
+    formData.append('semester', document.getElementById('semester').value);
+    formData.append('academic_year', document.getElementById('academic_year').value);
+    
+    try {
+        const response = await fetch('api/admin/assign_course.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = '✅ ' + data.message;
+            document.getElementById('assignForm').reset();
+            loadAssignments(); // Reload assignments
+        } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = '❌ ' + data.message;
+        }
+    } catch (error) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = '❌ Failed to assign course. Please try again.';
+    }
+    
+    assignBtn.disabled = false;
+    assignBtn.textContent = 'Assign Course';
+});
+
+async function loadAssignments() {
+    try {
+        const response = await fetch('api/admin/assign_course.php?action=list', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        
+        document.getElementById('loadingMessage').style.display = 'none';
+        
+        if (result.success) {
+            if (result.data.length === 0) {
+                document.getElementById('noAssignmentsMessage').style.display = 'block';
+                document.getElementById('assignmentsTable').style.display = 'none';
+            } else {
+                document.getElementById('noAssignmentsMessage').style.display = 'none';
+                document.getElementById('assignmentsTable').style.display = 'block';
+                displayAssignments(result.data);
+            }
+        }
+    } catch (error) {
+        document.getElementById('loadingMessage').innerHTML = 
+            '<p style="color:red;">Failed to load assignments.</p>';
+    }
+}
+
+function displayAssignments(assignments) {
+    const tbody = document.getElementById('assignmentsBody');
+    tbody.innerHTML = '';
+    
+    assignments.forEach(assignment => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${assignment.faculty_name} (${assignment.faculty_id})</td>
+            <td>${assignment.course_code} - ${assignment.course_name}</td>
+            <td>${assignment.semester}</td>
+            <td>${assignment.academic_year}</td>
+            <td>
+                <button class="delete-btn" onclick="deleteAssignment(${assignment.assignment_id}, '${assignment.faculty_name}', '${assignment.course_name}')">
+                    Remove
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function deleteAssignment(assignmentId, facultyName, courseName) {
+    if (!confirm(`Remove "${courseName}" from ${facultyName}?`)) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('assignment_id', assignmentId);
+        
+        const response = await fetch('api/admin/assign_course.php?action=delete', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Assignment removed successfully');
+            loadAssignments();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Failed to remove assignment');
+    }
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Faculty</title>
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#f4f6f9;
+}
+
+.navbar{
+background:#2c3e50;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+position:relative;
+}
+
+.back-btn{
+position:absolute;
+left:20px;
+top:12px;
+background:#3498db;
+color:white;
+padding:8px 15px;
+border-radius:5px;
+text-decoration:none;
+font-size:14px;
+}
+
+.container{
+padding:20px;
+max-width:1200px;
+margin:auto;
+}
+
+.search-box{
+background:white;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+.search-box input{
+width:300px;
+padding:10px;
+border:1px solid #ddd;
+border-radius:5px;
+margin-right:10px;
+}
+
+.search-box button{
+padding:10px 20px;
+background:#3498db;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.faculty-table{
+background:white;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+overflow:hidden;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th{
+background:#34495e;
+color:white;
+padding:15px;
+text-align:left;
+}
+
+td{
+padding:12px 15px;
+border-bottom:1px solid #eee;
+}
+
+tr:hover{
+background:#f8f9fa;
+}
+
+.btn{
+padding:6px 12px;
+border:none;
+border-radius:4px;
+cursor:pointer;
+margin-right:5px;
+font-size:12px;
+}
+
+.btn-edit{
+background:#f39c12;
+color:white;
+}
+
+.btn-delete{
+background:#e74c3c;
+color:white;
+}
+
+.btn-edit:hover{
+background:#e67e22;
+}
+
+.btn-delete:hover{
+background:#c0392b;
+}
+
+.status-active{
+color:#27ae60;
+font-weight:bold;
+}
+
+.status-inactive{
+color:#e74c3c;
+font-weight:bold;
+}
+
+.loading{
+text-align:center;
+padding:50px;
+color:#666;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+Manage Faculty
+<a href="admin-dashboard.html" class="back-btn">← Back</a>
+</div>
+
+<div class="container">
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="Search by Faculty ID, Name, or Email...">
+<button onclick="searchFaculty()">Search</button>
+<button onclick="loadAllFaculty()" style="background:#27ae60;">Show All</button>
+</div>
+
+<div class="faculty-table">
+<table>
+<thead>
+<tr>
+<th>Faculty ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Phone</th>
+<th>Department</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="facultyTableBody">
+<tr>
+<td colspan="7" class="loading">Loading faculty...</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<script>
+// Load all faculty on page load
+document.addEventListener('DOMContentLoaded', function() {
+loadAllFaculty();
+});
+
+function loadAllFaculty() {
+fetch('api/admin/get_all_faculty.php')
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+displayFaculty(data.faculty);
+} else {
+document.getElementById('facultyTableBody').innerHTML = 
+'<tr><td colspan="7" style="text-align:center;color:red;">Error: ' + data.message + '</td></tr>';
+}
+})
+.catch(error => {
+document.getElementById('facultyTableBody').innerHTML = 
+'<tr><td colspan="7" style="text-align:center;color:red;">Error loading faculty</td></tr>';
+});
+}
+
+function displayFaculty(faculty) {
+const tbody = document.getElementById('facultyTableBody');
+if (faculty.length === 0) {
+tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No faculty found</td></tr>';
+return;
+}
+
+tbody.innerHTML = faculty.map(member => `
+<tr>
+<td>${member.faculty_id}</td>
+<td>${member.name}</td>
+<td>${member.email}</td>
+<td>${member.phone}</td>
+<td>${member.dept_name}</td>
+<td><span class="status-${member.is_active == 1 ? 'active' : 'inactive'}">
+${member.is_active == 1 ? 'Active' : 'Inactive'}
+</span></td>
+<td>
+<button class="btn btn-edit" onclick="editFaculty('${member.faculty_id}')">Edit</button>
+<button class="btn btn-delete" onclick="deleteFaculty('${member.faculty_id}', '${member.name}')">Delete</button>
+</td>
+</tr>
+`).join('');
+}
+
+function searchFaculty() {
+const searchTerm = document.getElementById('searchInput').value.trim();
+if (searchTerm === '') {
+loadAllFaculty();
+return;
+}
+
+const tbody = document.getElementById('facultyTableBody');
+tbody.innerHTML = '<tr><td colspan="7" class="loading">Searching...</td></tr>';
+
+fetch('api/admin/get_all_faculty.php')
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const filtered = data.faculty.filter(member => 
+member.faculty_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+member.email.toLowerCase().includes(searchTerm.toLowerCase())
+);
+displayFaculty(filtered);
+}
+});
+}
+
+function editFaculty(facultyId) {
+// Redirect to edit page with faculty ID
+window.location.href = `edit-faculty.html?id=${facultyId}`;
+}
+
+function editFaculty(facultyId) {
+// Redirect to edit page with faculty ID
+window.location.href = `edit-faculty.html?id=${facultyId}`;
+}
+
+function deleteFaculty(facultyId, facultyName) {
+if (!confirm(`Are you sure you want to delete faculty "${facultyName}" (${facultyId})?\n\nThis action cannot be undone.`)) {
+return;
+}
+
+fetch('api/admin/delete_faculty.php', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/x-www-form-urlencoded',
+},
+body: `faculty_id=${facultyId}`
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+alert('Faculty deleted successfully!');
+loadAllFaculty(); // Reload the table
+} else {
+alert('Error: ' + data.message);
+}
+})
+.catch(error => {
+alert('Error deleting faculty');
+});
+}
+
+// Enter key search
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+if (e.key === 'Enter') {
+searchFaculty();
+}
+});
+</script>
+
+</body>
+</html>

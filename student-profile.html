@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Student Profile</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body{
+font-family: Arial;
+background-image:url("https://images.unsplash.com/photo-1503676382389-4809596d5290");
+background-size:cover;
+background-position:center;
+margin:0;
+}
+
+.container{
+width:400px;
+margin:60px auto;
+background:rgba(255,255,255,0.9);
+padding:30px;
+border-radius:10px;
+text-align:center;
+box-shadow:0 0 15px gray;
+}
+
+.profile-img{
+width:100px;
+height:100px;
+border-radius:50%;
+margin-bottom:15px;
+}
+
+h2{
+color:#007bff;
+}
+
+p{
+font-size:16px;
+margin:8px 0;
+}
+
+button{
+padding:10px 20px;
+background:#007bff;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+margin-top:15px;
+}
+
+button:hover{
+background:#0056b3;
+}
+
+.message{
+color:green;
+font-weight:bold;
+margin-top:15px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<img class="profile-img"
+src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+<h2 id="greeting">Hello Student &#128522;</h2>
+
+<div class="message">
+Keep learning and improve your skills!
+</div>
+
+<hr>
+
+<div id="profileData">
+<p style="color:gray;">Loading profile...</p>
+</div>
+
+<button onclick="goBack()">Go Back</button>
+
+</div>
+
+<script>
+
+async function loadProfile() {
+    try {
+        const response = await fetch('api/student/get_profile.php');
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            document.getElementById('greeting').textContent = 'Hello ' + data.name.split(' ')[0] + ' \u{1F60A}';
+            
+            document.getElementById('profileData').innerHTML = `
+                <p><b>Name :</b> ${data.name}</p>
+                <p><b>Student ID :</b> ${data.student_id}</p>
+                <p><b>Department :</b> ${data.department}</p>
+                <p><b>Semester :</b> ${data.semester}</p>
+                <p><b>Email :</b> ${data.email}</p>
+                <p><b>Phone :</b> ${data.phone}</p>
+            `;
+        } else {
+            document.getElementById('profileData').innerHTML = 
+                '<p style="color:red;">Failed to load profile. Please login again.</p>';
+        }
+    } catch (error) {
+        document.getElementById('profileData').innerHTML = 
+            '<p style="color:red;">Error loading profile data.</p>';
+    }
+}
+
+function goBack(){
+    window.location.href="student-dashboard.html";
+}
+
+// Load profile when page loads
+window.onload = loadProfile;
+
+</script>
+
+</body>
+</html>

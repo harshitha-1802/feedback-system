@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forgot Password</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f2f2f2;
+}
+
+.container{
+width:350px;
+margin:120px auto;
+background:white;
+padding:30px;
+text-align:center;
+border-radius:8px;
+box-shadow:0 0 10px gray;
+}
+
+input{
+width:90%;
+padding:10px;
+margin:10px;
+}
+
+button{
+padding:10px 20px;
+background:green;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.message{
+margin-top:10px;
+font-weight:bold;
+}
+
+.error{
+color:red;
+}
+
+.success{
+color:green;
+}
+
+.info{
+font-size:14px;
+color:#666;
+margin:10px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Forgot Password</h2>
+
+<p class="info">Enter your Student ID and Email (@bvrit.ac.in) to receive OTP</p>
+
+<form id="forgotForm">
+<input type="text" id="student_id" placeholder="Enter Student ID" required>
+
+<input type="email" id="email" placeholder="Email Address (@bvrit.ac.in)" required pattern=".*@bvrit\.ac\.in$">
+
+<button type="submit" id="submitBtn">Send OTP to Email</button>
+</form>
+
+<div id="message" class="message"></div>
+
+<br>
+<a href="student-login.html">Back to Login</a>
+
+</div>
+
+<script>
+document.getElementById('forgotForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const student_id = document.getElementById('student_id').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const messageDiv = document.getElementById('message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+    messageDiv.textContent = '';
+    
+    try {
+        const formData = new FormData();
+        formData.append('user_id', student_id);
+        formData.append('user_type', 'student');
+        formData.append('email', email);
+        
+        const response = await fetch('api/common/forgot_password.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        console.log('API Response:', data); // Debug log
+        
+        if (data.success) {
+            messageDiv.className = 'message success';
+            
+            // Check if OTP is provided (demo mode)
+            if (data.otp) {
+                messageDiv.innerHTML = '✅ ' + data.message + '<br><br><strong style="font-size:24px; color:#007bff;">Your OTP: ' + data.otp + '</strong><br><small>(Email sending not configured - showing OTP here)</small>';
+            } else {
+                messageDiv.textContent = '✅ OTP sent to your email. Please check your inbox.';
+            }
+            
+            // Store data for verification page
+            sessionStorage.setItem('reset_user_id', student_id);
+            sessionStorage.setItem('reset_user_type', 'student');
+            sessionStorage.setItem('reset_contact', email);
+            
+            setTimeout(() => {
+                window.location.href = 'student-verify.html';
+            }, data.otp ? 5000 : 2000); // Wait longer if showing OTP
+        } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = '❌ ' + data.message;
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send OTP to Email';
+        }
+    } catch (error) {
+        console.error('Error details:', error);
+        messageDiv.className = 'message error';
+        messageDiv.textContent = '❌ Network error. Please check console for details.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send OTP to Email';
+    }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Dashboard</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f2f2f2;
+}
+
+.header{
+background:#007bff;
+color:white;
+padding:25px;
+text-align:center;
+}
+
+.container{
+display:flex;
+justify-content:center;
+margin-top:80px;
+}
+
+.card{
+background:white;
+width:260px;
+padding:30px;
+text-align:center;
+border-radius:12px;
+box-shadow:0 0 10px gray;
+cursor:pointer;
+transition:0.3s;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:90px;
+}
+
+button{
+margin-top:15px;
+padding:10px 20px;
+background:#007bff;
+color:white;
+border:none;
+cursor:pointer;
+border-radius:5px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+<h2>Welcome Faculty &#128522;</h2>
+<p>Faculty Feedback Management System</p>
+</div>
+
+<div class="container">
+
+<div class="card">
+
+<img src="https://cdn-icons-png.flaticon.com/512/1828/1828884.png">
+
+<h3>View Student Feedback</h3>
+
+<p>Check anonymous feedback given by students.</p>
+
+<button onclick="openPage()">Open</button>
+
+</div>
+
+</div>
+
+<script>
+
+function openPage(){
+window.location.href="faculty-view-feedback.html";
+}
+
+</script>
+
+</body>
+</html>

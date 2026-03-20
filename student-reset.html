@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset Password</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f2f2f2;
+}
+
+.container{
+width:350px;
+margin:120px auto;
+background:white;
+padding:30px;
+text-align:center;
+border-radius:8px;
+box-shadow:0 0 10px gray;
+}
+
+input{
+width:90%;
+padding:10px;
+margin:10px;
+}
+
+button{
+padding:10px 20px;
+background:red;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.message{
+margin-top:10px;
+font-weight:bold;
+}
+
+.error{
+color:red;
+}
+
+.success{
+color:green;
+}
+
+.info{
+font-size:12px;
+color:#666;
+margin:10px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Reset Password</h2>
+
+<p class="info">Password must contain uppercase, lowercase, and special character (min 6 chars)</p>
+
+<form id="resetForm">
+<input type="password" id="new_password" placeholder="New Password" required>
+
+<input type="password" id="confirm_password" placeholder="Confirm Password" required>
+
+<button type="submit" id="submitBtn">Reset Password</button>
+</form>
+
+<div id="message" class="message"></div>
+
+</div>
+
+<script>
+// Check if user came from verify page
+if (!sessionStorage.getItem('reset_token')) {
+    alert('Please verify OTP first');
+    window.location.href = 'student-forgot.html';
+}
+
+document.getElementById('resetForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const new_password = document.getElementById('new_password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+    const messageDiv = document.getElementById('message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Validate passwords match
+    if (new_password !== confirm_password) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Passwords do not match';
+        return;
+    }
+    
+    // Validate password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{6,}$/;
+    if (!passwordRegex.test(new_password)) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Password must contain uppercase, lowercase, and special character (min 6 chars)';
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Resetting...';
+    messageDiv.textContent = '';
+    
+    try {
+        const formData = new FormData();
+        formData.append('token', sessionStorage.getItem('reset_token'));
+        formData.append('new_password', new_password);
+        
+        const response = await fetch('api/common/reset_password.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = '✅ Password reset successfully!';
+            
+            // Clear session storage
+            sessionStorage.removeItem('reset_user_id');
+            sessionStorage.removeItem('reset_user_type');
+            sessionStorage.removeItem('reset_contact');
+            sessionStorage.removeItem('reset_token');
+            sessionStorage.removeItem('reset_otp');
+            
+            setTimeout(() => {
+                window.location.href = 'student-login.html';
+            }, 2000);
+        } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = '❌ ' + data.message;
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Reset Password';
+        }
+    } catch (error) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = '❌ Failed to reset password. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reset Password';
+    }
+});
+</script>
+
+</body>
+</html>

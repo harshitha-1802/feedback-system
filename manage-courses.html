@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Courses</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f9;
+margin:0;
+padding-bottom:50px;
+}
+
+.navbar{
+background:#16a085;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.container{
+width:90%;
+max-width:1200px;
+margin:40px auto;
+}
+
+.add-section{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+margin-bottom:30px;
+}
+
+.courses-section{
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+border:1px solid gray;
+box-sizing:border-box;
+}
+
+button{
+margin-top:15px;
+padding:10px 20px;
+background:#16a085;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#138d75;
+}
+
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+.back-btn{
+background:#6c757d;
+}
+
+.back-btn:hover{
+background:#5a6268;
+}
+
+.delete-btn{
+background:#dc3545;
+padding:5px 10px;
+font-size:14px;
+margin:0;
+}
+
+.delete-btn:hover{
+background:#c82333;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:12px;
+border:1px solid #ddd;
+text-align:left;
+}
+
+th{
+background:#16a085;
+color:white;
+}
+
+tr:hover{
+background:#f1f1f1;
+}
+
+.message{
+margin-top:10px;
+padding:10px;
+border-radius:5px;
+font-weight:bold;
+}
+
+.success{
+background:#d4edda;
+color:#155724;
+}
+
+.error{
+background:#f8d7da;
+color:#721c24;
+}
+
+.loading{
+text-align:center;
+padding:20px;
+color:#666;
+}
+
+.form-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+}
+
+@media (max-width:768px){
+.form-grid{
+grid-template-columns:1fr;
+}
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+Manage Subjects / Courses
+</div>
+
+<div class="container">
+
+<button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
+
+<!-- Add Course Section -->
+<div class="add-section">
+<h3>Add New Subject</h3>
+
+<form id="addCourseForm">
+<div class="form-grid">
+<div>
+<label>Department</label>
+<select id="department" required>
+<option value="">Select Department</option>
+<option value="CSE">CSE - Computer Science</option>
+<option value="IT">IT - Information Technology</option>
+<option value="ECE">ECE - Electronics & Communication</option>
+<option value="EEE">EEE - Electrical & Electronics</option>
+</select>
+</div>
+
+<div>
+<label>Semester</label>
+<select id="semester" required>
+<option value="">Select Semester</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+</select>
+</div>
+</div>
+
+<label>Subject Name</label>
+<input type="text" id="course_name" placeholder="e.g., Database Management System" required>
+
+<label>Subject Code</label>
+<input type="text" id="course_code" placeholder="e.g., CS301" required>
+
+<button type="submit" id="addBtn">Add Subject</button>
+</form>
+
+<div id="addMessage"></div>
+</div>
+
+<!-- View Courses Section -->
+<div class="courses-section">
+<h3>All Subjects</h3>
+
+<div id="loadingMessage" class="loading">Loading subjects...</div>
+
+<div id="coursesTable" style="display:none;">
+<table>
+<thead>
+<tr>
+<th>Subject Code</th>
+<th>Subject Name</th>
+<th>Department</th>
+<th>Semester</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="coursesBody"></tbody>
+</table>
+</div>
+
+<div id="noCoursesMessage" style="display:none;text-align:center;padding:40px;color:#666;">
+<p>No subjects added yet. Add your first subject above!</p>
+</div>
+</div>
+
+</div>
+
+<script>
+
+function goBack(){
+    window.location.href = "admin-dashboard.html";
+}
+
+// Load courses on page load
+window.onload = loadCourses;
+
+// Add course form submission
+document.getElementById('addCourseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const addBtn = document.getElementById('addBtn');
+    const messageDiv = document.getElementById('addMessage');
+    
+    addBtn.disabled = true;
+    addBtn.textContent = 'Adding...';
+    messageDiv.innerHTML = '';
+    
+    const formData = new FormData();
+    formData.append('course_code', document.getElementById('course_code').value);
+    formData.append('course_name', document.getElementById('course_name').value);
+    formData.append('department', document.getElementById('department').value);
+    formData.append('semester', document.getElementById('semester').value);
+    
+    try {
+        const response = await fetch('api/admin/manage_courses.php?action=add', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = '✅ Subject added successfully!';
+            document.getElementById('addCourseForm').reset();
+            loadCourses(); // Reload the courses list
+        } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = '❌ ' + data.message;
+        }
+    } catch (error) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = '❌ Failed to add course. Please try again.';
+    }
+    
+    addBtn.disabled = false;
+    addBtn.textContent = 'Add Course';
+});
+
+async function loadCourses() {
+    try {
+        const response = await fetch('api/admin/manage_courses.php?action=list', {
+            credentials: 'same-origin'
+        });
+        const result = await response.json();
+        
+        document.getElementById('loadingMessage').style.display = 'none';
+        
+        if (result.success) {
+            if (result.data.length === 0) {
+                document.getElementById('noCoursesMessage').style.display = 'block';
+                document.getElementById('coursesTable').style.display = 'none';
+            } else {
+                document.getElementById('noCoursesMessage').style.display = 'none';
+                document.getElementById('coursesTable').style.display = 'block';
+                displayCourses(result.data);
+            }
+        } else {
+            alert('Failed to load courses: ' + result.message);
+        }
+    } catch (error) {
+        document.getElementById('loadingMessage').innerHTML = 
+            '<p style="color:red;">Failed to load courses. Please try again.</p>';
+    }
+}
+
+function displayCourses(courses) {
+    const tbody = document.getElementById('coursesBody');
+    tbody.innerHTML = '';
+    
+    courses.forEach(course => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${course.course_code}</td>
+            <td>${course.course_name}</td>
+            <td>${course.dept_name} (${course.dept_code})</td>
+            <td>${course.semester}</td>
+            <td>
+                <button class="delete-btn" onclick="deleteCourse(${course.course_id}, '${course.course_name}')">
+                    Delete
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function deleteCourse(courseId, courseName) {
+    if (!confirm(`Are you sure you want to delete subject "${courseName}"?\n\nThis will also delete all related feedback!`)) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('course_id', courseId);
+        
+        const response = await fetch('api/admin/manage_courses.php?action=delete', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            loadCourses(); // Reload the list
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Failed to delete course. Please try again.');
+    }
+}
+
+</script>
+
+</body>
+</html>

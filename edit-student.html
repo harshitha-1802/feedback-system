@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Student</title>
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#f4f6f9;
+}
+
+.navbar{
+background:#2c3e50;
+color:white;
+padding:15px;
+text-align:center;
+font-size:22px;
+position:relative;
+}
+
+.back-btn{
+position:absolute;
+left:20px;
+top:12px;
+background:#3498db;
+color:white;
+padding:8px 15px;
+border-radius:5px;
+text-decoration:none;
+font-size:14px;
+}
+
+.container{
+padding:40px;
+max-width:600px;
+margin:auto;
+}
+
+.form-container{
+background:white;
+padding:40px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+.form-group{
+margin-bottom:20px;
+}
+
+label{
+display:block;
+margin-bottom:5px;
+font-weight:bold;
+color:#333;
+}
+
+input, select{
+width:100%;
+padding:12px;
+border:1px solid #ddd;
+border-radius:5px;
+font-size:16px;
+box-sizing:border-box;
+}
+
+.btn{
+background:#3498db;
+color:white;
+padding:12px 30px;
+border:none;
+border-radius:5px;
+cursor:pointer;
+font-size:16px;
+margin-right:10px;
+}
+
+.btn:hover{
+background:#2980b9;
+}
+
+.btn-danger{
+background:#e74c3c;
+}
+
+.btn-danger:hover{
+background:#c0392b;
+}
+
+.loading{
+text-align:center;
+padding:50px;
+color:#666;
+}
+
+.error{
+color:#e74c3c;
+margin-top:10px;
+}
+
+.success{
+color:#27ae60;
+margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+Edit Student
+<a href="manage-students.html" class="back-btn">← Back</a>
+</div>
+
+<div class="container">
+<div class="form-container" id="formContainer">
+<div class="loading">Loading student details...</div>
+</div>
+</div>
+
+<script>
+let studentId = '';
+
+document.addEventListener('DOMContentLoaded', function() {
+// Get student ID from URL
+const urlParams = new URLSearchParams(window.location.search);
+studentId = urlParams.get('id');
+if (!studentId) {
+document.getElementById('formContainer').innerHTML = 
+'<div class="error">No student ID provided</div>';
+return;
+}
+loadStudentDetails();
+});
+
+function loadStudentDetails() {
+fetch('api/admin/get_all_students.php')
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const student = data.students.find(s => s.student_id === studentId);
+if (student) {
+displayEditForm(student);
+} else {
+document.getElementById('formContainer').innerHTML = 
+'<div class="error">Student not found</div>';
+}
+} else {
+document.getElementById('formContainer').innerHTML = 
+'<div class="error">Error loading student details</div>';
+}
+})
+.catch(error => {
+document.getElementById('formContainer').innerHTML = 
+'<div class="error">Error loading student details</div>';
+});
+}
+
+function displayEditForm(student) {
+document.getElementById('formContainer').innerHTML = `
+<h2>Edit Student: ${student.name}</h2>
+<form id="editForm">
+<div class="form-group">
+<label>Student ID</label>
+<input type="text" value="${student.student_id}" readonly style="background:#f8f9fa;">
+</div>
+<div class="form-group">
+<label>Name *</label>
+<input type="text" id="name" value="${student.name}" required>
+</div>
+<div class="form-group">
+<label>Email *</label>
+<input type="email" id="email" value="${student.email}" required>
+</div>
+<div class="form-group">
+<label>Phone *</label>
+<input type="text" id="phone" value="${student.phone}" required>
+</div>
+<div class="form-group">
+<label>Department *</label>
+<select id="department" required>
+<option value="1" ${student.dept_id == 1 ? 'selected' : ''}>Computer Science and Engineering</option>
+<option value="2" ${student.dept_id == 2 ? 'selected' : ''}>Information Technology</option>
+<option value="3" ${student.dept_id == 3 ? 'selected' : ''}>Electronics and Communication Engineering</option>
+<option value="4" ${student.dept_id == 4 ? 'selected' : ''}>Electrical and Electronics Engineering</option>
+</select>
+</div>
+<div class="form-group">
+<label>Semester *</label>
+<select id="semester" required>
+<option value="1" ${student.semester == 1 ? 'selected' : ''}>1st Semester</option>
+<option value="2" ${student.semester == 2 ? 'selected' : ''}>2nd Semester</option>
+<option value="3" ${student.semester == 3 ? 'selected' : ''}>3rd Semester</option>
+<option value="4" ${student.semester == 4 ? 'selected' : ''}>4th Semester</option>
+<option value="5" ${student.semester == 5 ? 'selected' : ''}>5th Semester</option>
+<option value="6" ${student.semester == 6 ? 'selected' : ''}>6th Semester</option>
+<option value="7" ${student.semester == 7 ? 'selected' : ''}>7th Semester</option>
+<option value="8" ${student.semester == 8 ? 'selected' : ''}>8th Semester</option>
+</select>
+</div>
+<div class="form-group">
+<label>Status *</label>
+<select id="status" required>
+<option value="1" ${student.is_active == 1 ? 'selected' : ''}>Active</option>
+<option value="0" ${student.is_active == 0 ? 'selected' : ''}>Inactive</option>
+</select>
+</div>
+<button type="submit" class="btn">Update Student</button>
+<button type="button" class="btn btn-danger" onclick="history.back()">Cancel</button>
+<div id="message"></div>
+</form>
+`;
+
+document.getElementById('editForm').addEventListener('submit', updateStudent);
+}
+
+function updateStudent(e) {
+e.preventDefault();
+const messageDiv = document.getElementById('message');
+messageDiv.innerHTML = '';
+
+const formData = new FormData();
+formData.append('student_id', studentId);
+formData.append('name', document.getElementById('name').value);
+formData.append('email', document.getElementById('email').value);
+formData.append('phone', document.getElementById('phone').value);
+formData.append('dept_id', document.getElementById('department').value);
+formData.append('semester', document.getElementById('semester').value);
+formData.append('is_active', document.getElementById('status').value);
+
+fetch('api/admin/update_student.php', {
+method: 'POST',
+body: formData
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+messageDiv.innerHTML = '<div class="success">Student updated successfully!</div>';
+setTimeout(() => {
+window.location.href = 'manage-students.html';
+}, 1500);
+} else {
+messageDiv.innerHTML = '<div class="error">Error: ' + data.message + '</div>';
+}
+})
+.catch(error => {
+messageDiv.innerHTML = '<div class="error">Error updating student</div>';
+});
+}
+</script>
+
+</body>
+</html>

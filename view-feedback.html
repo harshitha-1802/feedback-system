@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>View All Feedback - Admin</title>
+
+<style>
+
+body{
+font-family: Arial, sans-serif;
+background:#f4f6f9;
+margin:0;
+padding:0;
+}
+
+.container{
+width:90%;
+margin:auto;
+margin-top:30px;
+padding-bottom:50px;
+}
+
+h2{
+text-align:center;
+margin-bottom:20px;
+color:#333;
+}
+
+.back-btn{
+margin-bottom:15px;
+}
+
+.back-btn button{
+background:#6c757d;
+padding:10px 20px;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.back-btn button:hover{
+background:#5a6268;
+}
+
+.faculty-card{
+background:white;
+padding:20px;
+margin-bottom:20px;
+border-radius:8px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+cursor:pointer;
+transition:0.3s;
+}
+
+.faculty-card:hover{
+transform:translateY(-3px);
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+
+.faculty-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.faculty-info h3{
+margin:0 0 5px 0;
+color:#007bff;
+}
+
+.faculty-info p{
+margin:5px 0;
+color:#666;
+}
+
+.feedback-stats{
+text-align:right;
+}
+
+.feedback-count{
+font-size:24px;
+font-weight:bold;
+color:#28a745;
+}
+
+.avg-rating{
+font-size:16px;
+color:#666;
+}
+
+.no-feedback{
+color:#dc3545;
+font-weight:bold;
+}
+
+.loading{
+text-align:center;
+padding:40px;
+font-size:18px;
+color:#666;
+}
+
+.no-data{
+text-align:center;
+padding:40px;
+background:white;
+border-radius:8px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.rating-badge{
+display:inline-block;
+padding:5px 10px;
+margin:5px;
+background:#e9ecef;
+border-radius:5px;
+font-size:14px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="back-btn">
+<button onclick="goBack()">← Go Back</button>
+</div>
+
+<h2>VIEW ALL FACULTY FEEDBACK</h2>
+
+<div id="loadingMessage" class="loading">
+Loading faculty feedback data...
+</div>
+
+<div id="facultyList"></div>
+
+<div id="noDataMessage" class="no-data" style="display:none;">
+<h3>No Faculty Found</h3>
+<p>No faculty members have been added yet.</p>
+</div>
+
+</div>
+
+<script>
+
+function goBack(){
+    window.location.href="admin-dashboard.html";
+}
+
+async function loadAllFeedback() {
+    try {
+        const response = await fetch('api/admin/view_all_feedback.php');
+        const result = await response.json();
+        
+        document.getElementById('loadingMessage').style.display = 'none';
+        
+        if (result.success) {
+            if (result.data.length === 0) {
+                document.getElementById('noDataMessage').style.display = 'block';
+            } else {
+                displayFacultyList(result.data);
+            }
+        } else {
+            alert('Failed to load feedback: ' + result.message);
+        }
+    } catch (error) {
+        document.getElementById('loadingMessage').innerHTML = 
+            '<p style="color:red;">Failed to load data. Please try again.</p>';
+    }
+}
+
+function displayFacultyList(facultyData) {
+    const listDiv = document.getElementById('facultyList');
+    listDiv.innerHTML = '';
+    
+    facultyData.forEach(faculty => {
+        const card = document.createElement('div');
+        card.className = 'faculty-card';
+        card.onclick = () => viewFacultyDetails(faculty.faculty_id);
+        
+        const avgOverall = faculty.total_feedback > 0 
+            ? ((parseFloat(faculty.avg_teaching || 0) + 
+                parseFloat(faculty.avg_communication || 0) + 
+                parseFloat(faculty.avg_knowledge || 0) + 
+                parseFloat(faculty.avg_punctuality || 0)) / 4).toFixed(2)
+            : 0;
+        
+        card.innerHTML = `
+            <div class="faculty-header">
+                <div class="faculty-info">
+                    <h3>${faculty.faculty_name}</h3>
+                    <p><strong>Faculty ID:</strong> ${faculty.faculty_id}</p>
+                    <p><strong>Department:</strong> ${faculty.dept_name} (${faculty.dept_code})</p>
+                    <p><strong>Email:</strong> ${faculty.email}</p>
+                    ${faculty.total_feedback > 0 ? `
+                        <div style="margin-top:10px;">
+                            <span class="rating-badge">Teaching: ${parseFloat(faculty.avg_teaching || 0).toFixed(2)}/4</span>
+                            <span class="rating-badge">Communication: ${parseFloat(faculty.avg_communication || 0).toFixed(2)}/4</span>
+                            <span class="rating-badge">Knowledge: ${parseFloat(faculty.avg_knowledge || 0).toFixed(2)}/4</span>
+                            <span class="rating-badge">Punctuality: ${parseFloat(faculty.avg_punctuality || 0).toFixed(2)}/4</span>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="feedback-stats">
+                    ${faculty.total_feedback > 0 ? `
+                        <div class="feedback-count">${faculty.total_feedback}</div>
+                        <div>Feedback(s)</div>
+                        <div class="avg-rating">Avg: ${avgOverall}/4.0</div>
+                    ` : `
+                        <div class="no-feedback">No Feedback Yet</div>
+                    `}
+                </div>
+            </div>
+        `;
+        
+        listDiv.appendChild(card);
+    });
+}
+
+function viewFacultyDetails(facultyId) {
+    window.location.href = `view-feedback-details.html?faculty_id=${facultyId}`;
+}
+
+// Load data when page loads
+window.onload = loadAllFeedback;
+
+</script>
+
+</body>
+</html>
