@@ -118,120 +118,48 @@ Edit Faculty
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-let facultyId = '';
-
-document.addEventListener('DOMContentLoaded', function() {
-// Get faculty ID from URL
-const urlParams = new URLSearchParams(window.location.search);
-facultyId = urlParams.get('id');
-if (!facultyId) {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">No faculty ID provided</div>';
-return;
-}
-loadFacultyDetails();
+let facultyId='';
+document.addEventListener('DOMContentLoaded', async function() {
+    facultyId = new URLSearchParams(window.location.search).get('id');
+    if(!facultyId){ document.getElementById('formContainer').innerHTML='<div class="error">No faculty ID provided</div>'; return; }
+    const { data, error } = await db.from('faculty').select('*').eq('faculty_id', facultyId).single();
+    if(error||!data){ document.getElementById('formContainer').innerHTML='<div class="error">Faculty not found</div>'; return; }
+    displayEditForm(data);
 });
 
-function loadFacultyDetails() {
-fetch('api/admin/get_all_faculty.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-const faculty = data.faculty.find(f => f.faculty_id === facultyId);
-if (faculty) {
-displayEditForm(faculty);
-} else {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Faculty not found</div>';
-}
-} else {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Error loading faculty details</div>';
-}
-})
-.catch(error => {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Error loading faculty details</div>';
-});
+function displayEditForm(f) {
+    const deptOpts = [[1,'Computer Science and Engineering'],[2,'Information Technology'],[3,'Electronics and Communication Engineering'],[4,'Electrical and Electronics Engineering']].map(([v,l])=>`<option value="${v}" ${f.dept_id==v?'selected':''}>${l}</option>`).join('');
+    document.getElementById('formContainer').innerHTML = `
+        <h2>Edit Faculty: ${f.name}</h2>
+        <form id="editForm">
+            <div class="form-group"><label>Faculty ID</label><input type="text" value="${f.faculty_id}" readonly style="background:#f8f9fa;"></div>
+            <div class="form-group"><label>Name *</label><input type="text" id="name" value="${f.name}" required></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="email" value="${f.email}" required></div>
+            <div class="form-group"><label>Phone *</label><input type="text" id="phone" value="${f.phone}" required></div>
+            <div class="form-group"><label>Department *</label><select id="department" required>${deptOpts}</select></div>
+            <div class="form-group"><label>Status *</label><select id="status" required><option value="1" ${f.is_active?'selected':''}>Active</option><option value="0" ${!f.is_active?'selected':''}>Inactive</option></select></div>
+            <button type="submit" class="btn">Update Faculty</button>
+            <button type="button" class="btn btn-danger" onclick="history.back()">Cancel</button>
+            <div id="message"></div>
+        </form>`;
+    document.getElementById('editForm').addEventListener('submit', updateFaculty);
 }
 
-function displayEditForm(faculty) {
-document.getElementById('formContainer').innerHTML = `
-<h2>Edit Faculty: ${faculty.name}</h2>
-<form id="editForm">
-<div class="form-group">
-<label>Faculty ID</label>
-<input type="text" value="${faculty.faculty_id}" readonly style="background:#f8f9fa;">
-</div>
-<div class="form-group">
-<label>Name *</label>
-<input type="text" id="name" value="${faculty.name}" required>
-</div>
-<div class="form-group">
-<label>Email *</label>
-<input type="email" id="email" value="${faculty.email}" required>
-</div>
-<div class="form-group">
-<label>Phone *</label>
-<input type="text" id="phone" value="${faculty.phone}" required>
-</div>
-<div class="form-group">
-<label>Department *</label>
-<select id="department" required>
-<option value="1" ${faculty.dept_id == 1 ? 'selected' : ''}>Computer Science and Engineering</option>
-<option value="2" ${faculty.dept_id == 2 ? 'selected' : ''}>Information Technology</option>
-<option value="3" ${faculty.dept_id == 3 ? 'selected' : ''}>Electronics and Communication Engineering</option>
-<option value="4" ${faculty.dept_id == 4 ? 'selected' : ''}>Electrical and Electronics Engineering</option>
-</select>
-</div>
-<div class="form-group">
-<label>Status *</label>
-<select id="status" required>
-<option value="1" ${faculty.is_active == 1 ? 'selected' : ''}>Active</option>
-<option value="0" ${faculty.is_active == 0 ? 'selected' : ''}>Inactive</option>
-</select>
-</div>
-<button type="submit" class="btn">Update Faculty</button>
-<button type="button" class="btn btn-danger" onclick="history.back()">Cancel</button>
-<div id="message"></div>
-</form>
-`;
-
-document.getElementById('editForm').addEventListener('submit', updateFaculty);
-}
-
-function updateFaculty(e) {
-e.preventDefault();
-const messageDiv = document.getElementById('message');
-messageDiv.innerHTML = '';
-
-const formData = new FormData();
-formData.append('faculty_id', facultyId);
-formData.append('name', document.getElementById('name').value);
-formData.append('email', document.getElementById('email').value);
-formData.append('phone', document.getElementById('phone').value);
-formData.append('dept_id', document.getElementById('department').value);
-formData.append('is_active', document.getElementById('status').value);
-
-fetch('api/admin/update_faculty.php', {
-method: 'POST',
-body: formData
-})
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-messageDiv.innerHTML = '<div class="success">Faculty updated successfully!</div>';
-setTimeout(() => {
-window.location.href = 'manage-faculty.html';
-}, 1500);
-} else {
-messageDiv.innerHTML = '<div class="error">Error: ' + data.message + '</div>';
-}
-})
-.catch(error => {
-messageDiv.innerHTML = '<div class="error">Error updating faculty</div>';
-});
+async function updateFaculty(e) {
+    e.preventDefault();
+    const { error } = await db.from('faculty').update({
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        dept_id: parseInt(document.getElementById('department').value),
+        is_active: document.getElementById('status').value === '1'
+    }).eq('faculty_id', facultyId);
+    const msg = document.getElementById('message');
+    if(error){ msg.innerHTML='<div class="error">Error: '+error.message+'</div>'; }
+    else { msg.innerHTML='<div class="success">Faculty updated successfully!</div>'; setTimeout(()=>window.location.href='manage-faculty.html',1500); }
 }
 </script>
 

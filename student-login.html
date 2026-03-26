@@ -538,175 +538,65 @@ button:disabled {
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="supabase.js"></script>
 <script>
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
-    const student_id = document.getElementById('student_id').value;
-    const password = document.getElementById('password').value;
+    const student_id = document.getElementById('student_id').value.trim();
+    const password   = document.getElementById('password').value;
     const messageDiv = document.getElementById('message');
-    const loginBtn = document.getElementById('loginBtn');
-    
-    // Disable button and show loading
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Logging in...';
-    messageDiv.className = '';
-    messageDiv.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('student_id', student_id);
-        formData.append('password', password);
-        
-        const response = await fetch('api/student/login.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.className = 'message success show';
-            messageDiv.textContent = '✓ ' + data.message;
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 500);
-        } else {
-            messageDiv.className = 'message error show';
-            messageDiv.textContent = '✗ ' + data.message;
-            loginBtn.disabled = false;
-            loginBtn.textContent = 'Login';
-        }
-    } catch (error) {
-        messageDiv.className = 'message error show';
-        messageDiv.textContent = '✗ Login failed. Please try again.';
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Login';
-    }
+    const loginBtn   = document.getElementById('loginBtn');
+    loginBtn.disabled = true; loginBtn.textContent = 'Logging in...';
+
+    const hashed = await hashPassword(password);
+    const { data, error } = await db.from('students').select('*').eq('student_id', student_id).eq('password', hashed).single();
+
+    if(error || !data){ messageDiv.className='message error show'; messageDiv.textContent='✗ Invalid Student ID or Password'; loginBtn.disabled=false; loginBtn.textContent='Login'; return; }
+    if(data.is_active != true){ messageDiv.className='message error show'; messageDiv.textContent='✗ Account inactive'; loginBtn.disabled=false; loginBtn.textContent='Login'; return; }
+
+    setSession('student', { student_id: data.student_id, name: data.name, email: data.email, dept_id: data.dept_id, semester: data.semester });
+    messageDiv.className='message success show'; messageDiv.textContent='✓ Login successful';
+    setTimeout(() => window.location.href='student-dashboard.html', 500);
 });
 
-// OTP Login functionality
 const modal = document.getElementById('otpModal');
-const otpLoginBtn = document.getElementById('otpLoginBtn');
-const closeBtn = document.getElementsByClassName('close')[0];
-const sendOtpBtn = document.getElementById('sendOtpBtn');
-const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-const resendOtpBtn = document.getElementById('resendOtpBtn');
 const otpMessage = document.getElementById('otpMessage');
+document.getElementById('otpLoginBtn').onclick = () => { modal.style.display='block'; document.getElementById('otpStep1').style.display='block'; document.getElementById('otpStep2').style.display='none'; };
+document.getElementsByClassName('close')[0].onclick = () => modal.style.display='none';
+window.onclick = e => { if(e.target==modal) modal.style.display='none'; };
 
-otpLoginBtn.onclick = function() {
-    modal.style.display = 'block';
-    document.getElementById('otpStep1').style.display = 'block';
-    document.getElementById('otpStep2').style.display = 'none';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-}
-
-closeBtn.onclick = function() {
-    modal.style.display = 'none';
-}
-
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = 'none';
-    }
-}
-
-sendOtpBtn.onclick = async function() {
+document.getElementById('sendOtpBtn').onclick = async function() {
     const email = document.getElementById('otp_email').value.trim();
-    
-    if (!email) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = 'Please enter your email';
-        return;
-    }
-    
-    sendOtpBtn.disabled = true;
-    sendOtpBtn.textContent = 'Sending...';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('email', email);
-        
-        const response = await fetch('api/student/send_login_otp.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            otpMessage.className = 'success show';
-            otpMessage.textContent = '✓ ' + data.message;
-            document.getElementById('otpStep1').style.display = 'none';
-            document.getElementById('otpStep2').style.display = 'block';
-        } else {
-            otpMessage.className = 'error show';
-            otpMessage.textContent = '✗ ' + data.message;
-        }
-    } catch (error) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = '✗ Failed to send OTP. Please try again.';
-    } finally {
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Send OTP';
-    }
-}
+    if(!email) return;
+    this.disabled=true; this.textContent='Sending...';
+    const { data } = await db.from('students').select('student_id').eq('email', email).single();
+    if(!data){ otpMessage.className='error show'; otpMessage.textContent='✗ Email not found'; this.disabled=false; this.textContent='Send OTP'; return; }
+    const otp = Math.floor(100000+Math.random()*900000).toString();
+    const expires = new Date(Date.now()+10*60*1000).toISOString();
+    await db.from('password_reset_tokens').insert([{user_id:data.student_id,user_type:'student',token:otp,expires_at:expires}]);
+    try { await sendOTPEmail(email, otp); } catch(e) { console.error('Email error:', e); }
+    otpMessage.className='success show'; otpMessage.textContent='✓ OTP sent to your email';
+    document.getElementById('otpStep1').style.display='none'; document.getElementById('otpStep2').style.display='block';
+    this.disabled=false; this.textContent='Send OTP';
+};
 
-verifyOtpBtn.onclick = async function() {
+document.getElementById('verifyOtpBtn').onclick = async function() {
     const otp = document.getElementById('otp_code').value.trim();
-    
-    if (!otp || otp.length !== 6) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = 'Please enter a valid 6-digit OTP';
-        return;
-    }
-    
-    verifyOtpBtn.disabled = true;
-    verifyOtpBtn.textContent = 'Verifying...';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('otp', otp);
-        
-        const response = await fetch('api/student/verify_login_otp.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            otpMessage.className = 'success show';
-            otpMessage.textContent = '✓ ' + data.message;
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 500);
-        } else {
-            otpMessage.className = 'error show';
-            otpMessage.textContent = '✗ ' + data.message;
-            verifyOtpBtn.disabled = false;
-            verifyOtpBtn.textContent = 'Verify & Login';
-        }
-    } catch (error) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = '✗ Verification failed. Please try again.';
-        verifyOtpBtn.disabled = false;
-        verifyOtpBtn.textContent = 'Verify & Login';
-    }
-}
+    if(!otp||otp.length!==6) return;
+    this.disabled=true; this.textContent='Verifying...';
+    const now = new Date().toISOString();
+    const { data } = await db.from('password_reset_tokens').select('user_id').eq('token',otp).eq('user_type','student').gte('expires_at',now).single();
+    if(!data){ otpMessage.className='error show'; otpMessage.textContent='✗ Invalid or expired OTP'; this.disabled=false; this.textContent='Verify & Login'; return; }
+    const { data: student } = await db.from('students').select('*').eq('student_id',data.user_id).single();
+    await db.from('password_reset_tokens').delete().eq('token',otp);
+    setSession('student',{student_id:student.student_id,name:student.name,email:student.email,dept_id:student.dept_id,semester:student.semester});
+    otpMessage.className='success show'; otpMessage.textContent='✓ Login successful';
+    setTimeout(()=>window.location.href='student-dashboard.html',500);
+};
 
-resendOtpBtn.onclick = function() {
-    document.getElementById('otpStep1').style.display = 'block';
-    document.getElementById('otpStep2').style.display = 'none';
-    document.getElementById('otp_code').value = '';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-}
+document.getElementById('resendOtpBtn').onclick = () => { document.getElementById('otpStep1').style.display='block'; document.getElementById('otpStep2').style.display='none'; document.getElementById('otp_code').value=''; };
 </script>
 
 </body>

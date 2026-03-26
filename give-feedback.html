@@ -133,15 +133,96 @@ font-size:18px;
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
 let coursesData = [];
 let studentData = {};
 
 async function loadStudentCourses() {
-    try {
-        const response = await fetch('api/student/get_courses.php');
-        const result = await response.json();
+    const session = getSession();
+    if (!session.user_type || session.user_type !== 'student') { window.location.href='student-login.html'; return; }
+    studentData = session.user_data;
+
+    // Get dept name
+    const { data: dept } = await db.from('departments').select('dept_name').eq('dept_id', studentData.dept_id).single();
+    document.getElementById('studentInfo').innerHTML = `<p><b>Department:</b> ${dept?.dept_name||''} | <b>Semester:</b> ${studentData.semester}</p>`;
+
+    // Get assigned courses for this student's dept & semester
+    const { data: assignments } = await db.from('faculty_courses')
+        .select('course_id, semester, faculty(faculty_id, name), courses(course_id, course_name)')
+        .eq('semester', studentData.semester);
+
+    if (!assignments || assignments.length === 0) {
+        document.getElementById('feedbackContent').innerHTML = '<div class="warning">No courses assigned yet. Please contact admin.</div>'; return;
+    }
+
+    // Check which feedback already submitted
+    const { data: submitted } = await db.from('feedback').select('course_id, faculty_id').eq('student_id', studentData.student_id);
+    const submittedKeys = new Set((submitted||[]).map(f => f.faculty_id+'_'+f.course_id));
+
+    coursesData = assignments.map(a => ({
+        faculty_id: a.faculty?.faculty_id,
+        faculty_name: a.faculty?.name,
+        course_id: a.courses?.course_id,
+        course_name: a.courses?.course_name,
+        feedback_submitted: submittedKeys.has(a.faculty?.faculty_id+'_'+a.courses?.course_id)
+    }));
+
+    if (coursesData.every(c => c.feedback_submitted)) {
+        document.getElementById('feedbackContent').innerHTML = '<div class="already-submitted">✅ You have already submitted feedback for all your courses this semester.<br><br>Thank you!<br><br><button onclick="goBack()">Go to Dashboard</button></div>'; return;
+    }
+    displayFeedbackForm();
+}
+
+function displayFeedbackForm() {
+    let html = `<table id="feedbackTable"><tr><th>Subject</th><th>Faculty</th><th>Teaching Quality</th><th>Communication</th><th>Subject Knowledge</th><th>Punctuality</th><th>Comments</th></tr>`;
+    coursesData.forEach((course, i) => {
+        if (course.feedback_submitted) {
+            html += `<tr style="background:#d4edda;"><td>${course.course_name}</td><td>${course.faculty_name}</td><td colspan="5" style="color:green;font-weight:bold;">✅ Already Submitted</td></tr>`;
+        } else {
+            const sel = (id) => `<select id="${id}_${i}" onchange="validateForm()"><option value="">-- Select --</option><option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option></select>`;
+            html += `<tr><td>${course.course_name}</td><td>${course.faculty_name}</td><td>${sel('teaching')}</td><td>${sel('communication')}</td><td>${sel('knowledge')}</td><td>${sel('punctuality')}</td><td><textarea id="comments_${i}" rows="2" placeholder="Optional"></textarea></td></tr>`;
+        }
+    });
+    html += `</table><div id="validationMessage" class="error message" style="display:none;"></div><center><button id="submitBtn" onclick="submitAllFeedback()" disabled>Submit All Feedback</button><button onclick="goBack()" style="background:gray;margin-left:10px;">Cancel</button></center>`;
+    document.getElementById('feedbackContent').innerHTML = html;
+}
+
+function validateForm() {
+    let allFilled = true;
+    document.querySelectorAll('select').forEach(s => s.classList.remove('error-field'));
+    coursesData.forEach((c, i) => {
+        if (!c.feedback_submitted) {
+            ['teaching','communication','knowledge','punctuality'].forEach(f => {
+                const el = document.getElementById(`${f}_${i}`);
+                if (!el.value) { allFilled=false; el.classList.add('error-field'); }
+            });
+        }
+    });
+    document.getElementById('submitBtn').disabled = !allFilled;
+}
+
+async function submitAllFeedback() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled=true; btn.textContent='Submitting...';
+    const rows = coursesData.filter(c => !c.feedback_submitted).map((c, i) => ({
+        student_id: studentData.student_id,
+        faculty_id: c.faculty_id,
+        course_id: c.course_id,
+        semester: studentData.semester,
+        teaching_quality: document.getElementById(`teaching_${coursesData.indexOf(c)}`).value,
+        communication: document.getElementById(`communication_${coursesData.indexOf(c)}`).value,
+        subject_knowledge: document.getElementById(`knowledge_${coursesData.indexOf(c)}`).value,
+        punctuality: document.getElementById(`punctuality_${coursesData.indexOf(c)}`).value,
+        comments: document.getElementById(`comments_${coursesData.indexOf(c)}`).value
+    }));
+    const { error } = await db.from('feedback').insert(rows);
+    if (error) { alert('❌ '+error.message); btn.disabled=false; btn.textContent='Submit All Feedback'; }
+    else { alert('✅ Feedback submitted successfully!'); window.location.href='student-dashboard.html'; }
+}
+
+function goBack(){ window.location.href='student-dashboard.html'; }
         
         if (result.success) {
             studentData = result.student_info;
@@ -348,10 +429,10 @@ function goBack() {
     window.location.href = 'student-dashboard.html';
 }
 
-// Load courses when page loads
 window.onload = loadStudentCourses;
-
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 </body>
 </html>

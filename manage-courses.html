@@ -233,135 +233,59 @@ Manage Subjects / Courses
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href = "admin-dashboard.html";
-}
-
-// Load courses on page load
+function goBack(){ window.location.href="admin-dashboard.html"; }
 window.onload = loadCourses;
 
-// Add course form submission
 document.getElementById('addCourseForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
     const addBtn = document.getElementById('addBtn');
     const messageDiv = document.getElementById('addMessage');
-    
-    addBtn.disabled = true;
-    addBtn.textContent = 'Adding...';
-    messageDiv.innerHTML = '';
-    
-    const formData = new FormData();
-    formData.append('course_code', document.getElementById('course_code').value);
-    formData.append('course_name', document.getElementById('course_name').value);
-    formData.append('department', document.getElementById('department').value);
-    formData.append('semester', document.getElementById('semester').value);
-    
-    try {
-        const response = await fetch('api/admin/manage_courses.php?action=add', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.className = 'message success';
-            messageDiv.textContent = '✅ Subject added successfully!';
-            document.getElementById('addCourseForm').reset();
-            loadCourses(); // Reload the courses list
-        } else {
-            messageDiv.className = 'message error';
-            messageDiv.textContent = '❌ ' + data.message;
-        }
-    } catch (error) {
-        messageDiv.className = 'message error';
-        messageDiv.textContent = '❌ Failed to add course. Please try again.';
-    }
-    
-    addBtn.disabled = false;
-    addBtn.textContent = 'Add Course';
+    addBtn.disabled=true; addBtn.textContent='Adding...';
+
+    const deptCode   = document.getElementById('department').value;
+    const course_name = document.getElementById('course_name').value.trim();
+    const course_code = document.getElementById('course_code').value.trim();
+    const semester   = parseInt(document.getElementById('semester').value);
+
+    // Get dept_id from dept_code
+    const { data: dept } = await db.from('departments').select('dept_id').eq('dept_code', deptCode).single();
+    if(!dept){ messageDiv.className='message error'; messageDiv.textContent='❌ Department not found'; addBtn.disabled=false; addBtn.textContent='Add Subject'; return; }
+
+    const { error } = await db.from('courses').insert([{ course_code, course_name, dept_id: dept.dept_id, semester }]);
+    if(error){ messageDiv.className='message error'; messageDiv.textContent='❌ '+(error.message.includes('duplicate')?'Course code already exists':error.message); }
+    else { messageDiv.className='message success'; messageDiv.textContent='✅ Subject added successfully!'; document.getElementById('addCourseForm').reset(); loadCourses(); }
+    addBtn.disabled=false; addBtn.textContent='Add Subject';
 });
 
 async function loadCourses() {
-    try {
-        const response = await fetch('api/admin/manage_courses.php?action=list', {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
-        
-        document.getElementById('loadingMessage').style.display = 'none';
-        
-        if (result.success) {
-            if (result.data.length === 0) {
-                document.getElementById('noCoursesMessage').style.display = 'block';
-                document.getElementById('coursesTable').style.display = 'none';
-            } else {
-                document.getElementById('noCoursesMessage').style.display = 'none';
-                document.getElementById('coursesTable').style.display = 'block';
-                displayCourses(result.data);
-            }
-        } else {
-            alert('Failed to load courses: ' + result.message);
-        }
-    } catch (error) {
-        document.getElementById('loadingMessage').innerHTML = 
-            '<p style="color:red;">Failed to load courses. Please try again.</p>';
-    }
+    document.getElementById('loadingMessage').style.display='block';
+    const { data, error } = await db.from('courses').select('course_id, course_code, course_name, semester, departments(dept_name, dept_code)').order('course_code');
+    document.getElementById('loadingMessage').style.display='none';
+    if(error||!data||data.length===0){ document.getElementById('noCoursesMessage').style.display='block'; document.getElementById('coursesTable').style.display='none'; return; }
+    document.getElementById('noCoursesMessage').style.display='none';
+    document.getElementById('coursesTable').style.display='block';
+    displayCourses(data);
 }
 
 function displayCourses(courses) {
-    const tbody = document.getElementById('coursesBody');
-    tbody.innerHTML = '';
-    
-    courses.forEach(course => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${course.course_code}</td>
-            <td>${course.course_name}</td>
-            <td>${course.dept_name} (${course.dept_code})</td>
-            <td>${course.semester}</td>
-            <td>
-                <button class="delete-btn" onclick="deleteCourse(${course.course_id}, '${course.course_name}')">
-                    Delete
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
+    document.getElementById('coursesBody').innerHTML = courses.map(c => `
+        <tr>
+            <td>${c.course_code}</td>
+            <td>${c.course_name}</td>
+            <td>${c.departments?.dept_name||''} (${c.departments?.dept_code||''})</td>
+            <td>${c.semester}</td>
+            <td><button class="delete-btn" onclick="deleteCourse(${c.course_id},'${c.course_name}')">Delete</button></td>
+        </tr>`).join('');
 }
 
-async function deleteCourse(courseId, courseName) {
-    if (!confirm(`Are you sure you want to delete subject "${courseName}"?\n\nThis will also delete all related feedback!`)) {
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('course_id', courseId);
-        
-        const response = await fetch('api/admin/manage_courses.php?action=delete', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('✅ ' + data.message);
-            loadCourses(); // Reload the list
-        } else {
-            alert('❌ ' + data.message);
-        }
-    } catch (error) {
-        alert('❌ Failed to delete course. Please try again.');
-    }
+async function deleteCourse(id, name) {
+    if(!confirm(`Delete subject "${name}"? This will also delete related feedback!`)) return;
+    const { error } = await db.from('courses').delete().eq('course_id', id);
+    if(error){ alert('❌ '+error.message); } else { alert('✅ Subject deleted'); loadCourses(); }
 }
-
 </script>
 
 </body>

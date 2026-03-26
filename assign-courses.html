@@ -219,187 +219,65 @@ Assign Courses to Faculty
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href = "admin-dashboard.html";
-}
-
-// Load data on page load
-window.onload = function() {
-    loadFaculty();
-    loadCourses();
-    loadAssignments();
-};
+function goBack(){ window.location.href="admin-dashboard.html"; }
+window.onload = function(){ loadFaculty(); loadCourses(); loadAssignments(); };
 
 async function loadFaculty() {
-    try {
-        const response = await fetch('api/admin/get_all_faculty.php', {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
-        
-        const select = document.getElementById('faculty_id');
-        select.innerHTML = '<option value="">Select Faculty</option>';
-        
-        if (result.success && result.data.length > 0) {
-            result.data.forEach(faculty => {
-                const option = document.createElement('option');
-                option.value = faculty.faculty_id;
-                option.textContent = `${faculty.name} (${faculty.faculty_id}) - ${faculty.dept_name}`;
-                select.appendChild(option);
-            });
-        } else {
-            select.innerHTML = '<option value="">No faculty found</option>';
-        }
-    } catch (error) {
-        console.error('Error loading faculty:', error);
-    }
+    const { data } = await db.from('faculty').select('faculty_id, name, departments(dept_name)').order('name');
+    const select = document.getElementById('faculty_id');
+    select.innerHTML = '<option value="">Select Faculty</option>';
+    (data||[]).forEach(f => { const o=document.createElement('option'); o.value=f.faculty_id; o.textContent=`${f.name} (${f.faculty_id}) - ${f.departments?.dept_name||''}`; select.appendChild(o); });
 }
 
 async function loadCourses() {
-    try {
-        const response = await fetch('api/admin/manage_courses.php?action=list', {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
-        
-        const select = document.getElementById('course_id');
-        select.innerHTML = '<option value="">Select Course</option>';
-        
-        if (result.success && result.data.length > 0) {
-            result.data.forEach(course => {
-                const option = document.createElement('option');
-                option.value = course.course_id;
-                option.textContent = `${course.course_code} - ${course.course_name} (${course.dept_code}, Sem ${course.semester})`;
-                select.appendChild(option);
-            });
-        } else {
-            select.innerHTML = '<option value="">No courses found - Add courses first</option>';
-        }
-    } catch (error) {
-        console.error('Error loading courses:', error);
-    }
+    const { data } = await db.from('courses').select('course_id, course_code, course_name, semester, departments(dept_code)').order('course_code');
+    const select = document.getElementById('course_id');
+    select.innerHTML = '<option value="">Select Course</option>';
+    (data||[]).forEach(c => { const o=document.createElement('option'); o.value=c.course_id; o.textContent=`${c.course_code} - ${c.course_name} (${c.departments?.dept_code||''}, Sem ${c.semester})`; select.appendChild(o); });
 }
 
-// Assign course form submission
 document.getElementById('assignForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
     const assignBtn = document.getElementById('assignBtn');
     const messageDiv = document.getElementById('assignMessage');
-    
-    assignBtn.disabled = true;
-    assignBtn.textContent = 'Assigning...';
-    messageDiv.innerHTML = '';
-    
-    const formData = new FormData();
-    formData.append('faculty_id', document.getElementById('faculty_id').value);
-    formData.append('course_id', document.getElementById('course_id').value);
-    formData.append('semester', document.getElementById('semester').value);
-    formData.append('academic_year', document.getElementById('academic_year').value);
-    
-    try {
-        const response = await fetch('api/admin/assign_course.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.className = 'message success';
-            messageDiv.textContent = '✅ ' + data.message;
-            document.getElementById('assignForm').reset();
-            loadAssignments(); // Reload assignments
-        } else {
-            messageDiv.className = 'message error';
-            messageDiv.textContent = '❌ ' + data.message;
-        }
-    } catch (error) {
-        messageDiv.className = 'message error';
-        messageDiv.textContent = '❌ Failed to assign course. Please try again.';
-    }
-    
-    assignBtn.disabled = false;
-    assignBtn.textContent = 'Assign Course';
+    assignBtn.disabled=true; assignBtn.textContent='Assigning...';
+
+    const { error } = await db.from('faculty_courses').insert([{
+        faculty_id: document.getElementById('faculty_id').value,
+        course_id: parseInt(document.getElementById('course_id').value),
+        semester: parseInt(document.getElementById('semester').value),
+        academic_year: document.getElementById('academic_year').value
+    }]);
+
+    if(error){ messageDiv.className='message error'; messageDiv.textContent='❌ '+(error.message.includes('duplicate')?'Already assigned':error.message); }
+    else { messageDiv.className='message success'; messageDiv.textContent='✅ Course assigned successfully!'; document.getElementById('assignForm').reset(); loadAssignments(); }
+    assignBtn.disabled=false; assignBtn.textContent='Assign Course';
 });
 
 async function loadAssignments() {
-    try {
-        const response = await fetch('api/admin/assign_course.php?action=list', {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
-        
-        document.getElementById('loadingMessage').style.display = 'none';
-        
-        if (result.success) {
-            if (result.data.length === 0) {
-                document.getElementById('noAssignmentsMessage').style.display = 'block';
-                document.getElementById('assignmentsTable').style.display = 'none';
-            } else {
-                document.getElementById('noAssignmentsMessage').style.display = 'none';
-                document.getElementById('assignmentsTable').style.display = 'block';
-                displayAssignments(result.data);
-            }
-        }
-    } catch (error) {
-        document.getElementById('loadingMessage').innerHTML = 
-            '<p style="color:red;">Failed to load assignments.</p>';
-    }
+    const { data } = await db.from('faculty_courses').select('assignment_id, semester, academic_year, faculty(faculty_id, name), courses(course_code, course_name)').order('assignment_id', {ascending:false});
+    document.getElementById('loadingMessage').style.display='none';
+    if(!data||data.length===0){ document.getElementById('noAssignmentsMessage').style.display='block'; document.getElementById('assignmentsTable').style.display='none'; return; }
+    document.getElementById('noAssignmentsMessage').style.display='none';
+    document.getElementById('assignmentsTable').style.display='block';
+    document.getElementById('assignmentsBody').innerHTML = data.map(a => `
+        <tr>
+            <td>${a.faculty?.name||''} (${a.faculty?.faculty_id||''})</td>
+            <td>${a.courses?.course_code||''} - ${a.courses?.course_name||''}</td>
+            <td>${a.semester}</td>
+            <td>${a.academic_year}</td>
+            <td><button class="delete-btn" onclick="deleteAssignment(${a.assignment_id},'${a.faculty?.name||''}','${a.courses?.course_name||''}')">Remove</button></td>
+        </tr>`).join('');
 }
 
-function displayAssignments(assignments) {
-    const tbody = document.getElementById('assignmentsBody');
-    tbody.innerHTML = '';
-    
-    assignments.forEach(assignment => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${assignment.faculty_name} (${assignment.faculty_id})</td>
-            <td>${assignment.course_code} - ${assignment.course_name}</td>
-            <td>${assignment.semester}</td>
-            <td>${assignment.academic_year}</td>
-            <td>
-                <button class="delete-btn" onclick="deleteAssignment(${assignment.assignment_id}, '${assignment.faculty_name}', '${assignment.course_name}')">
-                    Remove
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
+async function deleteAssignment(id, facultyName, courseName) {
+    if(!confirm(`Remove "${courseName}" from ${facultyName}?`)) return;
+    const { error } = await db.from('faculty_courses').delete().eq('assignment_id', id);
+    if(error){ alert('❌ '+error.message); } else { alert('✅ Assignment removed'); loadAssignments(); }
 }
-
-async function deleteAssignment(assignmentId, facultyName, courseName) {
-    if (!confirm(`Remove "${courseName}" from ${facultyName}?`)) {
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('assignment_id', assignmentId);
-        
-        const response = await fetch('api/admin/assign_course.php?action=delete', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('✅ Assignment removed successfully');
-            loadAssignments();
-        } else {
-            alert('❌ ' + data.message);
-        }
-    } catch (error) {
-        alert('❌ Failed to remove assignment');
-    }
-}
-
 </script>
 
 </body>

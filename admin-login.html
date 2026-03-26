@@ -541,175 +541,116 @@ button:disabled {
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="supabase.js"></script>
 <script>
+// Password login
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
-    const admin_id = document.getElementById('admin_id').value;
-    const password = document.getElementById('password').value;
+    const admin_id   = document.getElementById('admin_id').value.trim();
+    const password   = document.getElementById('password').value;
     const messageDiv = document.getElementById('message');
-    const loginBtn = document.getElementById('loginBtn');
-    
-    // Disable button and show loading
+    const loginBtn   = document.getElementById('loginBtn');
+
     loginBtn.disabled = true;
     loginBtn.textContent = 'Logging in...';
-    messageDiv.className = '';
-    messageDiv.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('admin_id', admin_id);
-        formData.append('password', password);
-        
-        const response = await fetch('api/admin/login.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.className = 'message success show';
-            messageDiv.textContent = '✓ ' + data.message;
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 500);
-        } else {
-            messageDiv.className = 'message error show';
-            messageDiv.textContent = '✗ ' + data.message;
-            loginBtn.disabled = false;
-            loginBtn.textContent = 'Login';
-        }
-    } catch (error) {
+
+    const hashed = await hashPassword(password);
+    const { data, error } = await db.from('admin').select('*').eq('admin_id', admin_id).eq('password', hashed).single();
+
+    if(error || !data){
         messageDiv.className = 'message error show';
-        messageDiv.textContent = '✗ Login failed. Please try again.';
+        messageDiv.textContent = '✗ Invalid Admin ID or Password';
         loginBtn.disabled = false;
         loginBtn.textContent = 'Login';
+        return;
     }
+    if(data.is_active != true){
+        messageDiv.className = 'message error show';
+        messageDiv.textContent = '✗ Your account is inactive. Contact super admin.';
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+        return;
+    }
+
+    setSession('admin', { admin_id: data.admin_id, name: data.name, email: data.email });
+    messageDiv.className = 'message success show';
+    messageDiv.textContent = '✓ Login successful';
+    setTimeout(() => window.location.href = 'admin-dashboard.html', 500);
 });
 
-// OTP Login functionality
-const modal = document.getElementById('otpModal');
-const otpLoginBtn = document.getElementById('otpLoginBtn');
-const closeBtn = document.getElementsByClassName('close')[0];
-const sendOtpBtn = document.getElementById('sendOtpBtn');
-const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-const resendOtpBtn = document.getElementById('resendOtpBtn');
+// OTP modal
+const modal      = document.getElementById('otpModal');
 const otpMessage = document.getElementById('otpMessage');
+let otpEmail     = '';
 
-otpLoginBtn.onclick = function() {
+document.getElementById('otpLoginBtn').onclick = () => {
     modal.style.display = 'block';
     document.getElementById('otpStep1').style.display = 'block';
     document.getElementById('otpStep2').style.display = 'none';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-}
+};
+document.getElementsByClassName('close')[0].onclick = () => modal.style.display = 'none';
+window.onclick = e => { if(e.target == modal) modal.style.display = 'none'; };
 
-closeBtn.onclick = function() {
-    modal.style.display = 'none';
-}
+document.getElementById('sendOtpBtn').onclick = async function() {
+    otpEmail = document.getElementById('otp_email').value.trim();
+    if(!otpEmail) return;
 
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = 'none';
-    }
-}
+    this.disabled = true; this.textContent = 'Sending...';
 
-sendOtpBtn.onclick = async function() {
-    const email = document.getElementById('otp_email').value.trim();
-    
-    if (!email) {
+    // Check admin exists
+    const { data, error: findErr } = await db.from('admin').select('admin_id, email').ilike('email', otpEmail).single();
+    if(!data){
         otpMessage.className = 'error show';
-        otpMessage.textContent = 'Please enter your email';
+        otpMessage.textContent = '✗ Email not found: ' + (findErr?.message || 'no record');
+        this.disabled = false; this.textContent = 'Send OTP';
         return;
     }
-    
-    sendOtpBtn.disabled = true;
-    sendOtpBtn.textContent = 'Sending...';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('email', email);
-        
-        const response = await fetch('api/admin/send_login_otp.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            otpMessage.className = 'success show';
-            otpMessage.textContent = '✓ ' + data.message;
-            document.getElementById('otpStep1').style.display = 'none';
-            document.getElementById('otpStep2').style.display = 'block';
-        } else {
-            otpMessage.className = 'error show';
-            otpMessage.textContent = '✗ ' + data.message;
-        }
-    } catch (error) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = '✗ Failed to send OTP. Please try again.';
-    } finally {
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Send OTP';
-    }
-}
 
-verifyOtpBtn.onclick = async function() {
+    // Generate & store OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    await db.from('password_reset_tokens').insert([{ user_id: data.admin_id, user_type: 'admin', token: otp, expires_at: expires }]);
+    try { await sendOTPEmail(otpEmail, otp); } catch(e) { console.error('Email error:', e); }
+    otpMessage.className = 'success show';
+    otpMessage.textContent = '✓ OTP sent to your email';
+    document.getElementById('otpStep1').style.display = 'none';
+    document.getElementById('otpStep2').style.display = 'block';
+    this.disabled = false; this.textContent = 'Send OTP';
+};
+
+document.getElementById('verifyOtpBtn').onclick = async function() {
     const otp = document.getElementById('otp_code').value.trim();
-    
-    if (!otp || otp.length !== 6) {
+    if(!otp || otp.length !== 6) return;
+
+    this.disabled = true; this.textContent = 'Verifying...';
+
+    const now = new Date().toISOString();
+    const { data } = await db.from('password_reset_tokens')
+        .select('user_id').eq('token', otp).eq('user_type', 'admin').gte('expires_at', now).single();
+
+    if(!data){
         otpMessage.className = 'error show';
-        otpMessage.textContent = 'Please enter a valid 6-digit OTP';
+        otpMessage.textContent = '✗ Invalid or expired OTP';
+        this.disabled = false; this.textContent = 'Verify & Login';
         return;
     }
-    
-    verifyOtpBtn.disabled = true;
-    verifyOtpBtn.textContent = 'Verifying...';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-    
-    try {
-        const formData = new FormData();
-        formData.append('otp', otp);
-        
-        const response = await fetch('api/admin/verify_login_otp.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            otpMessage.className = 'success show';
-            otpMessage.textContent = '✓ ' + data.message;
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 500);
-        } else {
-            otpMessage.className = 'error show';
-            otpMessage.textContent = '✗ ' + data.message;
-            verifyOtpBtn.disabled = false;
-            verifyOtpBtn.textContent = 'Verify & Login';
-        }
-    } catch (error) {
-        otpMessage.className = 'error show';
-        otpMessage.textContent = '✗ Verification failed. Please try again.';
-        verifyOtpBtn.disabled = false;
-        verifyOtpBtn.textContent = 'Verify & Login';
-    }
-}
 
-resendOtpBtn.onclick = function() {
+    const { data: admin } = await db.from('admin').select('*').eq('admin_id', data.user_id).single();
+    await db.from('password_reset_tokens').delete().eq('token', otp);
+
+    setSession('admin', { admin_id: admin.admin_id, name: admin.name, email: admin.email });
+    otpMessage.className = 'success show';
+    otpMessage.textContent = '✓ Login successful';
+    setTimeout(() => window.location.href = 'admin-dashboard.html', 500);
+};
+
+document.getElementById('resendOtpBtn').onclick = () => {
     document.getElementById('otpStep1').style.display = 'block';
     document.getElementById('otpStep2').style.display = 'none';
     document.getElementById('otp_code').value = '';
-    otpMessage.className = '';
-    otpMessage.style.display = 'none';
-}
+};
 </script>
 
 </body>

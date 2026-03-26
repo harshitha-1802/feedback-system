@@ -146,16 +146,59 @@ Loading faculty feedback data...
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href="admin-dashboard.html";
-}
+function goBack(){ window.location.href="admin-dashboard.html"; }
 
 async function loadAllFeedback() {
-    try {
-        const response = await fetch('api/admin/view_all_feedback.php');
-        const result = await response.json();
+    const { data: faculty, error } = await db.from('faculty').select('faculty_id, name, email, departments(dept_name, dept_code)').order('name');
+    document.getElementById('loadingMessage').style.display='none';
+    if(error||!faculty||faculty.length===0){ document.getElementById('noDataMessage').style.display='block'; return; }
+
+    // Get feedback averages per faculty
+    const { data: feedbacks } = await db.from('feedback').select('faculty_id, teaching_quality, communication, subject_knowledge, punctuality');
+    const ratingMap = {'Excellent':4,'Good':3,'Average':2,'Poor':1};
+
+    const statsMap = {};
+    (feedbacks||[]).forEach(f => {
+        if(!statsMap[f.faculty_id]) statsMap[f.faculty_id]={count:0,t:0,c:0,k:0,p:0};
+        statsMap[f.faculty_id].count++;
+        statsMap[f.faculty_id].t += ratingMap[f.teaching_quality]||0;
+        statsMap[f.faculty_id].c += ratingMap[f.communication]||0;
+        statsMap[f.faculty_id].k += ratingMap[f.subject_knowledge]||0;
+        statsMap[f.faculty_id].p += ratingMap[f.punctuality]||0;
+    });
+
+    const listDiv = document.getElementById('facultyList');
+    faculty.forEach(f => {
+        const s = statsMap[f.faculty_id];
+        const card = document.createElement('div');
+        card.className='faculty-card';
+        card.onclick = () => viewFacultyDetails(f.faculty_id);
+        const avg = s ? ((s.t+s.c+s.k+s.p)/(s.count*4)).toFixed(2) : 0;
+        card.innerHTML = `<div class="faculty-header">
+            <div class="faculty-info">
+                <h3>${f.name}</h3>
+                <p><strong>Faculty ID:</strong> ${f.faculty_id}</p>
+                <p><strong>Department:</strong> ${f.departments?.dept_name||''} (${f.departments?.dept_code||''})</p>
+                <p><strong>Email:</strong> ${f.email}</p>
+                ${s?`<div style="margin-top:10px;">
+                    <span class="rating-badge">Teaching: ${(s.t/s.count).toFixed(2)}/4</span>
+                    <span class="rating-badge">Communication: ${(s.c/s.count).toFixed(2)}/4</span>
+                    <span class="rating-badge">Knowledge: ${(s.k/s.count).toFixed(2)}/4</span>
+                    <span class="rating-badge">Punctuality: ${(s.p/s.count).toFixed(2)}/4</span>
+                </div>`:''}
+            </div>
+            <div class="feedback-stats">
+                ${s?`<div class="feedback-count">${s.count}</div><div>Feedback(s)</div><div class="avg-rating">Avg: ${avg}/1.0</div>`:'<div class="no-feedback">No Feedback Yet</div>'}
+            </div>
+        </div>`;
+        listDiv.appendChild(card);
+    });
+}
+
+function viewFacultyDetails(id){ window.location.href=`view-feedback-details.html?faculty_id=${id}`; }
         
         document.getElementById('loadingMessage').style.display = 'none';
         
@@ -228,8 +271,9 @@ function viewFacultyDetails(facultyId) {
 
 // Load data when page loads
 window.onload = loadAllFeedback;
-
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 </body>
 </html>

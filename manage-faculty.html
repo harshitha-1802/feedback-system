@@ -171,120 +171,52 @@ Manage Faculty
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-// Load all faculty on page load
-document.addEventListener('DOMContentLoaded', function() {
-loadAllFaculty();
-});
+let allFaculty = [];
+document.addEventListener('DOMContentLoaded', loadAllFaculty);
 
-function loadAllFaculty() {
-fetch('api/admin/get_all_faculty.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-displayFaculty(data.faculty);
-} else {
-document.getElementById('facultyTableBody').innerHTML = 
-'<tr><td colspan="7" style="text-align:center;color:red;">Error: ' + data.message + '</td></tr>';
-}
-})
-.catch(error => {
-document.getElementById('facultyTableBody').innerHTML = 
-'<tr><td colspan="7" style="text-align:center;color:red;">Error loading faculty</td></tr>';
-});
+async function loadAllFaculty() {
+    const { data, error } = await db.from('faculty').select('faculty_id, name, email, phone, is_active, departments(dept_name)').order('name');
+    if(error){ document.getElementById('facultyTableBody').innerHTML='<tr><td colspan="7" style="text-align:center;color:red;">Error: '+error.message+'</td></tr>'; return; }
+    allFaculty = data;
+    displayFaculty(data);
 }
 
 function displayFaculty(faculty) {
-const tbody = document.getElementById('facultyTableBody');
-if (faculty.length === 0) {
-tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No faculty found</td></tr>';
-return;
-}
-
-tbody.innerHTML = faculty.map(member => `
-<tr>
-<td>${member.faculty_id}</td>
-<td>${member.name}</td>
-<td>${member.email}</td>
-<td>${member.phone}</td>
-<td>${member.dept_name}</td>
-<td><span class="status-${member.is_active == 1 ? 'active' : 'inactive'}">
-${member.is_active == 1 ? 'Active' : 'Inactive'}
-</span></td>
-<td>
-<button class="btn btn-edit" onclick="editFaculty('${member.faculty_id}')">Edit</button>
-<button class="btn btn-delete" onclick="deleteFaculty('${member.faculty_id}', '${member.name}')">Delete</button>
-</td>
-</tr>
-`).join('');
+    const tbody = document.getElementById('facultyTableBody');
+    if(!faculty||faculty.length===0){ tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">No faculty found</td></tr>'; return; }
+    tbody.innerHTML = faculty.map(m => `
+        <tr>
+            <td>${m.faculty_id}</td>
+            <td>${m.name}</td>
+            <td>${m.email}</td>
+            <td>${m.phone}</td>
+            <td>${m.departments?.dept_name||''}</td>
+            <td><span class="status-${m.is_active?'active':'inactive'}">${m.is_active?'Active':'Inactive'}</span></td>
+            <td>
+                <button class="btn btn-edit" onclick="editFaculty('${m.faculty_id}')">Edit</button>
+                <button class="btn btn-delete" onclick="deleteFaculty('${m.faculty_id}','${m.name}')">Delete</button>
+            </td>
+        </tr>`).join('');
 }
 
 function searchFaculty() {
-const searchTerm = document.getElementById('searchInput').value.trim();
-if (searchTerm === '') {
-loadAllFaculty();
-return;
+    const term = document.getElementById('searchInput').value.trim().toLowerCase();
+    if(!term){ displayFaculty(allFaculty); return; }
+    displayFaculty(allFaculty.filter(m => m.faculty_id.toLowerCase().includes(term)||m.name.toLowerCase().includes(term)||m.email.toLowerCase().includes(term)));
 }
 
-const tbody = document.getElementById('facultyTableBody');
-tbody.innerHTML = '<tr><td colspan="7" class="loading">Searching...</td></tr>';
+function editFaculty(id){ window.location.href=`edit-faculty.html?id=${id}`; }
 
-fetch('api/admin/get_all_faculty.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-const filtered = data.faculty.filter(member => 
-member.faculty_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-member.email.toLowerCase().includes(searchTerm.toLowerCase())
-);
-displayFaculty(filtered);
-}
-});
+async function deleteFaculty(id, name) {
+    if(!confirm(`Delete faculty "${name}" (${id})? This cannot be undone.`)) return;
+    const { error } = await db.from('faculty').delete().eq('faculty_id', id);
+    if(error){ alert('Error: '+error.message); } else { alert('Faculty deleted'); loadAllFaculty(); }
 }
 
-function editFaculty(facultyId) {
-// Redirect to edit page with faculty ID
-window.location.href = `edit-faculty.html?id=${facultyId}`;
-}
-
-function editFaculty(facultyId) {
-// Redirect to edit page with faculty ID
-window.location.href = `edit-faculty.html?id=${facultyId}`;
-}
-
-function deleteFaculty(facultyId, facultyName) {
-if (!confirm(`Are you sure you want to delete faculty "${facultyName}" (${facultyId})?\n\nThis action cannot be undone.`)) {
-return;
-}
-
-fetch('api/admin/delete_faculty.php', {
-method: 'POST',
-headers: {
-'Content-Type': 'application/x-www-form-urlencoded',
-},
-body: `faculty_id=${facultyId}`
-})
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-alert('Faculty deleted successfully!');
-loadAllFaculty(); // Reload the table
-} else {
-alert('Error: ' + data.message);
-}
-})
-.catch(error => {
-alert('Error deleting faculty');
-});
-}
-
-// Enter key search
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-if (e.key === 'Enter') {
-searchFaculty();
-}
-});
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') searchFaculty(); });
 </script>
 
 </body>

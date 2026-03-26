@@ -89,12 +89,26 @@ Keep learning and improve your skills!
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
 async function loadProfile() {
-    try {
-        const response = await fetch('api/student/get_profile.php');
-        const result = await response.json();
+    const session = getSession();
+    if(!session.user_type||session.user_type!=='student'){ window.location.href='student-login.html'; return; }
+    const s = session.user_data;
+    document.getElementById('greeting').textContent = 'Hello '+s.name.split(' ')[0]+' \u{1F60A}';
+    const { data: dept } = await db.from('departments').select('dept_name').eq('dept_id', s.dept_id).single();
+    const { data: full } = await db.from('students').select('phone').eq('student_id', s.student_id).single();
+    document.getElementById('profileData').innerHTML = `
+        <p><b>Name :</b> ${s.name}</p>
+        <p><b>Student ID :</b> ${s.student_id}</p>
+        <p><b>Department :</b> ${dept?.dept_name||''}</p>
+        <p><b>Semester :</b> ${s.semester}</p>
+        <p><b>Email :</b> ${s.email}</p>
+        <p><b>Phone :</b> ${full?.phone||''}</p>`;
+}
+function goBack(){ window.location.href="student-dashboard.html"; }
+window.onload = loadProfile;
         
         if (result.success) {
             const data = result.data;

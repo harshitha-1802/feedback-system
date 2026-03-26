@@ -142,16 +142,40 @@ Loading your feedback status...
 <p>You don't have any courses assigned yet. Please contact admin.</p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href = "student-dashboard.html";
-}
+function goBack(){ window.location.href="student-dashboard.html"; }
 
 async function loadFeedbackStatus() {
-    try {
-        const response = await fetch('api/student/get_courses.php');
-        const result = await response.json();
+    const session = getSession();
+    if(!session.user_type||session.user_type!=='student'){ window.location.href='student-login.html'; return; }
+    const s = session.user_data;
+
+    const { data: assignments } = await db.from('faculty_courses')
+        .select('course_id, faculty(name), courses(course_name)')
+        .eq('semester', s.semester);
+
+    document.getElementById('loadingMessage').style.display='none';
+
+    if(!assignments||assignments.length===0){ document.getElementById('noCoursesMessage').style.display='block'; return; }
+
+    const { data: submitted } = await db.from('feedback').select('course_id, faculty_id').eq('student_id', s.student_id);
+    const submittedKeys = new Set((submitted||[]).map(f=>f.faculty_id+'_'+f.course_id));
+
+    document.getElementById('infoMessage').style.display='block';
+    document.getElementById('tableContainer').style.display='block';
+
+    document.getElementById('statusTableBody').innerHTML = assignments.map(a => {
+        const isSubmitted = submittedKeys.has((a.faculty?.faculty_id||'')+'_'+a.course_id);
+        return `<tr>
+            <td>${a.courses?.course_name||''}</td>
+            <td>${a.faculty?.name||'Not Assigned'}</td>
+            <td class="${isSubmitted?'status-submitted':'status-pending'}">${isSubmitted?'✅ Submitted':'⏳ Pending'}</td>
+            <td>${isSubmitted?'Completed':'-'}</td>
+        </tr>`;
+    }).join('');
+}
         
         document.getElementById('loadingMessage').style.display = 'none';
         
@@ -196,8 +220,9 @@ function displayFeedbackStatus(courses) {
 
 // Load status when page loads
 window.onload = loadFeedbackStatus;
-
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 </body>
 </html>

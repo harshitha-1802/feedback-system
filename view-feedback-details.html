@@ -226,25 +226,55 @@ Loading feedback details...
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href = "view-feedback.html";
-}
+function goBack(){ window.location.href="view-feedback.html"; }
+const ratingMap = {'Excellent':4,'Good':3,'Average':2,'Poor':1};
 
 async function loadFeedbackDetails() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const facultyId = urlParams.get('faculty_id');
-    
-    if (!facultyId) {
-        alert('Faculty ID not provided');
-        goBack();
-        return;
-    }
-    
-    try {
-        const response = await fetch(`api/admin/view_faculty_feedback.php?faculty_id=${facultyId}`);
-        const result = await response.json();
+    const facultyId = new URLSearchParams(window.location.search).get('faculty_id');
+    if(!facultyId){ alert('Faculty ID not provided'); goBack(); return; }
+
+    const { data: f } = await db.from('faculty').select('faculty_id, name, email, departments(dept_name)').eq('faculty_id', facultyId).single();
+    document.getElementById('loadingMessage').style.display='none';
+    document.getElementById('contentArea').style.display='block';
+    document.getElementById('facultyName').textContent = f?.name||'';
+    document.getElementById('facultyDetails').innerHTML = `<strong>Faculty ID:</strong> ${f?.faculty_id} | <strong>Department:</strong> ${f?.departments?.dept_name||''} | <strong>Email:</strong> ${f?.email}`;
+
+    const { data: feedbacks } = await db.from('feedback').select('*, students(name, student_id), courses(course_name, course_code)').eq('faculty_id', facultyId);
+
+    if(!feedbacks||feedbacks.length===0){ document.getElementById('noFeedbackMessage').style.display='block'; return; }
+    document.getElementById('feedbackContent').style.display='block';
+
+    const n = feedbacks.length;
+    const avg = k => (feedbacks.reduce((s,f)=>s+(ratingMap[f[k]]||0),0)/n).toFixed(2);
+    const avgs = { t: avg('teaching_quality'), c: avg('communication'), k: avg('subject_knowledge'), p: avg('punctuality') };
+    const overall = ((+avgs.t + +avgs.c + +avgs.k + +avgs.p)/4).toFixed(2);
+
+    document.getElementById('totalFeedback').textContent=n;
+    document.getElementById('avgTeaching').textContent=avgs.t;
+    document.getElementById('avgCommunication').textContent=avgs.c;
+    document.getElementById('avgKnowledge').textContent=avgs.k;
+    document.getElementById('avgPunctuality').textContent=avgs.p;
+    document.getElementById('avgOverall').textContent=overall;
+
+    new Chart(document.getElementById('ratingChart'),{type:'bar',data:{labels:['Teaching','Communication','Knowledge','Punctuality'],datasets:[{label:'Avg Rating (out of 4)',data:[avgs.t,avgs.c,avgs.k,avgs.p],backgroundColor:['#28a745','#007bff','#ffc107','#dc3545']}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:4}}}});
+
+    document.getElementById('feedbackItems').innerHTML = feedbacks.map((fb,i)=>`
+        <div class="feedback-item">
+            <h4>Feedback #${i+1} - ${fb.courses?.course_name||''} (${fb.courses?.course_code||''})</h4>
+            <p><strong>Student:</strong> ${fb.students?.name||''} (${fb.students?.student_id||''})</p>
+            <p><strong>Semester:</strong> ${fb.semester} | <strong>Submitted:</strong> ${new Date(fb.submitted_at).toLocaleDateString()}</p>
+            <div class="rating-row">
+                <div class="rating-item"><div class="rating-label">Teaching</div><div class="rating-value">${fb.teaching_quality}</div></div>
+                <div class="rating-item"><div class="rating-label">Communication</div><div class="rating-value">${fb.communication}</div></div>
+                <div class="rating-item"><div class="rating-label">Knowledge</div><div class="rating-value">${fb.subject_knowledge}</div></div>
+                <div class="rating-item"><div class="rating-label">Punctuality</div><div class="rating-value">${fb.punctuality}</div></div>
+            </div>
+            ${fb.comments?`<div class="comment-box"><strong>Comment:</strong> ${fb.comments}</div>`:''}
+        </div>`).join('');
+}
         
         document.getElementById('loadingMessage').style.display = 'none';
         document.getElementById('contentArea').style.display = 'block';
@@ -376,8 +406,9 @@ function displayChart(averages) {
 
 // Load data when page loads
 window.onload = loadFeedbackDetails;
-
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 </body>
 </html>

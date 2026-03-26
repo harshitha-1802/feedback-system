@@ -148,20 +148,51 @@ Loading feedback data...
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function goBack(){
-    window.location.href="faculty-dashboard.html";
-}
-
-let chart;
+function goBack(){ window.location.href="faculty-dashboard.html"; }
+const ratingMap = {'Excellent':4,'Good':3,'Average':2,'Poor':1};
 
 async function loadFacultyFeedback(){
-    try {
-        const response = await fetch('api/faculty/view_feedback.php', {
-            credentials: 'same-origin'
-        });
-        const result = await response.json();
+    const session = getSession();
+    if(!session.user_type||session.user_type!=='faculty'){ window.location.href='faculty-login.html'; return; }
+    const facultyId = session.user_data.faculty_id;
+    document.getElementById('facultyName').textContent = 'Faculty: '+session.user_data.name;
+
+    const { data: feedbacks } = await db.from('feedback').select('*, courses(course_name)').eq('faculty_id', facultyId);
+    document.getElementById('loadingMessage').style.display='none';
+
+    if(!feedbacks||feedbacks.length===0){ document.getElementById('noFeedbackMessage').style.display='block'; return; }
+    document.getElementById('feedbackContent').style.display='block';
+
+    const n = feedbacks.length;
+    const avg = k => (feedbacks.reduce((s,f)=>s+(ratingMap[f[k]]||0),0)/n).toFixed(2);
+    const avgs = { t:avg('teaching_quality'), c:avg('communication'), k:avg('subject_knowledge'), p:avg('punctuality') };
+    const overall = ((+avgs.t + +avgs.c + +avgs.k + +avgs.p)/4).toFixed(2);
+
+    document.getElementById('totalFeedback').textContent='Total Feedback Received: '+n;
+    document.getElementById('avgRating').textContent='Average Overall Rating: '+overall+' / 4.0';
+    document.getElementById('avgTeaching').textContent='Teaching Quality: '+avgs.t+' / 4.0';
+    document.getElementById('avgCommunication').textContent='Communication: '+avgs.c+' / 4.0';
+    document.getElementById('avgKnowledge').textContent='Subject Knowledge: '+avgs.k+' / 4.0';
+    document.getElementById('avgPunctuality').textContent='Punctuality: '+avgs.p+' / 4.0';
+
+    const comments = feedbacks.filter(f=>f.comments&&f.comments.trim());
+    document.getElementById('commentsList').innerHTML = comments.length ? comments.map(f=>`<p style="background:white;padding:10px;border-radius:6px;margin-top:10px;">💬 ${f.comments}</p>`).join('') : '<p style="color:#666;font-style:italic;">No comments yet.</p>';
+
+    document.getElementById('feedbackList').innerHTML = feedbacks.map((f,i)=>`
+        <div style="background:white;padding:15px;border-radius:8px;margin-top:15px;border:1px solid #ddd;">
+            <h4 style="color:#007bff;margin-top:0;">Feedback #${i+1} - ${f.courses?.course_name||''}</h4>
+            <p><strong>Submitted:</strong> ${new Date(f.submitted_at).toLocaleDateString()}</p>
+            <p><strong>Teaching Quality:</strong> ${f.teaching_quality}</p>
+            <p><strong>Communication:</strong> ${f.communication}</p>
+            <p><strong>Subject Knowledge:</strong> ${f.subject_knowledge}</p>
+            <p><strong>Punctuality:</strong> ${f.punctuality}</p>
+        </div>`).join('');
+
+    new Chart(document.getElementById('feedbackChart'),{type:'bar',data:{labels:['Teaching','Communication','Knowledge','Punctuality'],datasets:[{label:'Avg Rating (out of 4)',data:[avgs.t,avgs.c,avgs.k,avgs.p],backgroundColor:['#28a745','#007bff','#ffc107','#dc3545']}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:4}}}});
+}
         
         document.getElementById('loadingMessage').style.display = 'none';
         
@@ -296,8 +327,9 @@ function loadChart(averages) {
 
 // Load feedback when page loads
 window.onload = loadFacultyFeedback;
-
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
 </body>
 </html>

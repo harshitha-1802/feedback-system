@@ -172,116 +172,54 @@ Manage Students
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-// Load all students on page load
-document.addEventListener('DOMContentLoaded', function() {
-loadAllStudents();
-});
+document.addEventListener('DOMContentLoaded', loadAllStudents);
 
-function loadAllStudents() {
-fetch('api/admin/get_all_students.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-displayStudents(data.students);
-} else {
-document.getElementById('studentsTableBody').innerHTML = 
-'<tr><td colspan="8" style="text-align:center;color:red;">Error: ' + data.message + '</td></tr>';
+async function loadAllStudents() {
+    const { data, error } = await db.from('students').select('student_id, name, email, phone, semester, is_active, departments(dept_name)').order('name');
+    if(error){ document.getElementById('studentsTableBody').innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error: '+error.message+'</td></tr>'; return; }
+    allStudents = data;
+    displayStudents(data);
 }
-})
-.catch(error => {
-document.getElementById('studentsTableBody').innerHTML = 
-'<tr><td colspan="8" style="text-align:center;color:red;">Error loading students</td></tr>';
-});
-}
+
+let allStudents = [];
 
 function displayStudents(students) {
-const tbody = document.getElementById('studentsTableBody');
-if (students.length === 0) {
-tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No students found</td></tr>';
-return;
-}
-
-tbody.innerHTML = students.map(student => `
-<tr>
-<td>${student.student_id}</td>
-<td>${student.name}</td>
-<td>${student.email}</td>
-<td>${student.phone}</td>
-<td>${student.dept_name}</td>
-<td>${student.semester}</td>
-<td><span class="status-${student.is_active == 1 ? 'active' : 'inactive'}">
-${student.is_active == 1 ? 'Active' : 'Inactive'}
-</span></td>
-<td>
-<button class="btn btn-edit" onclick="editStudent('${student.student_id}')">Edit</button>
-<button class="btn btn-delete" onclick="deleteStudent('${student.student_id}', '${student.name}')">Delete</button>
-</td>
-</tr>
-`).join('');
+    const tbody = document.getElementById('studentsTableBody');
+    if(!students||students.length===0){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;">No students found</td></tr>'; return; }
+    tbody.innerHTML = students.map(s => `
+        <tr>
+            <td>${s.student_id}</td>
+            <td>${s.name}</td>
+            <td>${s.email}</td>
+            <td>${s.phone}</td>
+            <td>${s.departments?.dept_name||''}</td>
+            <td>${s.semester}</td>
+            <td><span class="status-${s.is_active?'active':'inactive'}">${s.is_active?'Active':'Inactive'}</span></td>
+            <td>
+                <button class="btn btn-edit" onclick="editStudent('${s.student_id}')">Edit</button>
+                <button class="btn btn-delete" onclick="deleteStudent('${s.student_id}','${s.name}')">Delete</button>
+            </td>
+        </tr>`).join('');
 }
 
 function searchStudents() {
-const searchTerm = document.getElementById('searchInput').value.trim();
-if (searchTerm === '') {
-loadAllStudents();
-return;
+    const term = document.getElementById('searchInput').value.trim().toLowerCase();
+    if(!term){ displayStudents(allStudents); return; }
+    displayStudents(allStudents.filter(s => s.student_id.toLowerCase().includes(term)||s.name.toLowerCase().includes(term)||s.email.toLowerCase().includes(term)));
 }
 
-const tbody = document.getElementById('studentsTableBody');
-tbody.innerHTML = '<tr><td colspan="8" class="loading">Searching...</td></tr>';
+function editStudent(id){ window.location.href=`edit-student.html?id=${id}`; }
 
-fetch('api/admin/get_all_students.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-const filtered = data.students.filter(student => 
-student.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-student.email.toLowerCase().includes(searchTerm.toLowerCase())
-);
-displayStudents(filtered);
-}
-});
+async function deleteStudent(id, name) {
+    if(!confirm(`Delete student "${name}" (${id})? This cannot be undone.`)) return;
+    const { error } = await db.from('students').delete().eq('student_id', id);
+    if(error){ alert('Error: '+error.message); } else { alert('Student deleted'); loadAllStudents(); }
 }
 
-function editStudent(studentId) {
-// Redirect to edit page with student ID
-window.location.href = `edit-student.html?id=${studentId}`;
-}
-
-function deleteStudent(studentId, studentName) {
-if (!confirm(`Are you sure you want to delete student "${studentName}" (${studentId})?\n\nThis action cannot be undone.`)) {
-return;
-}
-
-fetch('api/admin/delete_student.php', {
-method: 'POST',
-headers: {
-'Content-Type': 'application/x-www-form-urlencoded',
-},
-body: `student_id=${studentId}`
-})
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-alert('Student deleted successfully!');
-loadAllStudents(); // Reload the table
-} else {
-alert('Error: ' + data.message);
-}
-})
-.catch(error => {
-alert('Error deleting student');
-});
-}
-
-// Enter key search
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-if (e.key === 'Enter') {
-searchStudents();
-}
-});
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') searchStudents(); });
 </script>
 
 </body>

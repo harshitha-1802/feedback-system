@@ -86,67 +86,24 @@ margin:10px 0;
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-// Check if user came from forgot password page
-if (!sessionStorage.getItem('reset_user_id')) {
-    alert('Please start from forgot password page');
-    window.location.href = 'faculty-forgot.html';
-}
-
+if(!sessionStorage.getItem('reset_user_id')){ alert('Please start from forgot password page'); window.location.href='faculty-forgot.html'; }
 document.getElementById('verifyForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
     const otp = document.getElementById('otp').value.trim();
     const messageDiv = document.getElementById('message');
     const submitBtn = document.getElementById('submitBtn');
-    
-    if (otp.length !== 6) {
-        messageDiv.className = 'message error';
-        messageDiv.textContent = 'OTP must be 6 digits';
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Verifying...';
-    messageDiv.textContent = '';
-    
-    try {
-        const formData = new FormData();
-        formData.append('user_id', sessionStorage.getItem('reset_user_id'));
-        formData.append('user_type', sessionStorage.getItem('reset_user_type'));
-        formData.append('otp', otp);
-        
-        const response = await fetch('api/common/verify_otp.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.className = 'message success';
-            messageDiv.textContent = '✅ OTP Verified!';
-            
-            // Store verified token for reset page
-            sessionStorage.setItem('reset_token', data.token);
-            
-            setTimeout(() => {
-                window.location.href = 'faculty-reset.html';
-            }, 1000);
-        } else {
-            messageDiv.className = 'message error';
-            messageDiv.textContent = '❌ ' + data.message;
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Verify OTP';
-        }
-    } catch (error) {
-        messageDiv.className = 'message error';
-        messageDiv.textContent = '❌ Failed to verify OTP. Please try again.';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Verify OTP';
-    }
+    if(otp.length!==6){ messageDiv.className='message error'; messageDiv.textContent='OTP must be 6 digits'; return; }
+    submitBtn.disabled=true; submitBtn.textContent='Verifying...';
+    const now = new Date().toISOString();
+    const { data } = await db.from('password_reset_tokens').select('user_id').eq('token',otp).eq('user_type','faculty').gte('expires_at',now).single();
+    if(!data){ messageDiv.className='message error'; messageDiv.textContent='❌ Invalid or expired OTP'; submitBtn.disabled=false; submitBtn.textContent='Verify OTP'; return; }
+    sessionStorage.setItem('reset_token', otp);
+    messageDiv.className='message success'; messageDiv.textContent='✅ OTP Verified!';
+    setTimeout(()=>window.location.href='faculty-reset.html',1000);
 });
-</script>
 
 </body>
 </html>

@@ -119,7 +119,7 @@ toggleSubmit()
 function validateEmail(){
 
 let email=document.getElementById("email").value
-let regex=/^[a-z0-9]+@bvrit\.ac\.in$/
+let regex=/^[a-zA-Z0-9]+@bvrit\.ac\.in$/
 
 if(!regex.test(email))
 showError("emailError","Use @bvrit.ac.in email")
@@ -245,47 +245,31 @@ btn.disabled=false
 
 </form>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
 async function addFaculty() {
     const btn = document.getElementById('submitBtn');
     const messageDiv = document.getElementById('message');
-    
-    btn.disabled = true;
-    btn.textContent = 'Adding...';
-    
-    const formData = new FormData();
-    formData.append('faculty_id', document.getElementById('fid').value);
-    formData.append('name', document.getElementById('name').value);
-    formData.append('email', document.getElementById('email').value);
-    formData.append('phone', document.getElementById('phone').value);
-    formData.append('department', document.getElementById('dept').value);
-    formData.append('password', document.getElementById('pass').value);
-    
-    try {
-        const response = await fetch('api/admin/add_faculty.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            messageDiv.style.color = 'green';
-            messageDiv.textContent = '✅ ' + data.message;
-            document.querySelector('form').reset();
-            btn.disabled = true;
-        } else {
-            messageDiv.style.color = 'red';
-            messageDiv.textContent = '❌ ' + data.message;
-            btn.disabled = false;
-        }
-    } catch (error) {
-        messageDiv.style.color = 'red';
-        messageDiv.textContent = '❌ Failed to add faculty. Please try again.';
-        btn.disabled = false;
-    }
-    
-    btn.textContent = 'Add Faculty';
+    btn.disabled=true; btn.textContent='Adding...';
+
+    const deptCode = document.getElementById('dept').value;
+    const { data: dept } = await db.from('departments').select('dept_id').eq('dept_code', deptCode).single();
+    const hashed = await hashPassword(document.getElementById('pass').value);
+
+    const { error } = await db.from('faculty').insert([{
+        faculty_id: document.getElementById('fid').value.trim(),
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        dept_id: dept?.dept_id,
+        password: hashed,
+        is_active: true
+    }]);
+
+    if(error){ messageDiv.style.color='red'; messageDiv.textContent='❌ '+(error.message.includes('duplicate')?'Faculty ID or Email already exists':error.message); btn.disabled=false; }
+    else { messageDiv.style.color='green'; messageDiv.textContent='✅ Faculty added successfully!'; document.querySelector('form').reset(); btn.disabled=true; }
+    btn.textContent='Add Faculty';
 }
 </script>
 

@@ -118,136 +118,52 @@ Edit Student
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-let studentId = '';
-
-document.addEventListener('DOMContentLoaded', function() {
-// Get student ID from URL
-const urlParams = new URLSearchParams(window.location.search);
-studentId = urlParams.get('id');
-if (!studentId) {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">No student ID provided</div>';
-return;
-}
-loadStudentDetails();
+let studentId='';
+document.addEventListener('DOMContentLoaded', async function() {
+    studentId = new URLSearchParams(window.location.search).get('id');
+    if(!studentId){ document.getElementById('formContainer').innerHTML='<div class="error">No student ID provided</div>'; return; }
+    const { data, error } = await db.from('students').select('*').eq('student_id', studentId).single();
+    if(error||!data){ document.getElementById('formContainer').innerHTML='<div class="error">Student not found</div>'; return; }
+    displayEditForm(data);
 });
 
-function loadStudentDetails() {
-fetch('api/admin/get_all_students.php')
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-const student = data.students.find(s => s.student_id === studentId);
-if (student) {
-displayEditForm(student);
-} else {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Student not found</div>';
-}
-} else {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Error loading student details</div>';
-}
-})
-.catch(error => {
-document.getElementById('formContainer').innerHTML = 
-'<div class="error">Error loading student details</div>';
-});
+function displayEditForm(s) {
+    const opts = (n,sel) => [1,2,3,4,5,6,7,8].map(i=>`<option value="${i}" ${s[n]==i?'selected':''}>${i}</option>`).join('');
+    const deptOpts = [[1,'Computer Science and Engineering'],[2,'Information Technology'],[3,'Electronics and Communication Engineering'],[4,'Electrical and Electronics Engineering']].map(([v,l])=>`<option value="${v}" ${s.dept_id==v?'selected':''}>${l}</option>`).join('');
+    document.getElementById('formContainer').innerHTML = `
+        <h2>Edit Student: ${s.name}</h2>
+        <form id="editForm">
+            <div class="form-group"><label>Student ID</label><input type="text" value="${s.student_id}" readonly style="background:#f8f9fa;"></div>
+            <div class="form-group"><label>Name *</label><input type="text" id="name" value="${s.name}" required></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="email" value="${s.email}" required></div>
+            <div class="form-group"><label>Phone *</label><input type="text" id="phone" value="${s.phone}" required></div>
+            <div class="form-group"><label>Department *</label><select id="department" required>${deptOpts}</select></div>
+            <div class="form-group"><label>Semester *</label><select id="semester" required>${opts('semester')}</select></div>
+            <div class="form-group"><label>Status *</label><select id="status" required><option value="1" ${s.is_active?'selected':''}>Active</option><option value="0" ${!s.is_active?'selected':''}>Inactive</option></select></div>
+            <button type="submit" class="btn">Update Student</button>
+            <button type="button" class="btn btn-danger" onclick="history.back()">Cancel</button>
+            <div id="message"></div>
+        </form>`;
+    document.getElementById('editForm').addEventListener('submit', updateStudent);
 }
 
-function displayEditForm(student) {
-document.getElementById('formContainer').innerHTML = `
-<h2>Edit Student: ${student.name}</h2>
-<form id="editForm">
-<div class="form-group">
-<label>Student ID</label>
-<input type="text" value="${student.student_id}" readonly style="background:#f8f9fa;">
-</div>
-<div class="form-group">
-<label>Name *</label>
-<input type="text" id="name" value="${student.name}" required>
-</div>
-<div class="form-group">
-<label>Email *</label>
-<input type="email" id="email" value="${student.email}" required>
-</div>
-<div class="form-group">
-<label>Phone *</label>
-<input type="text" id="phone" value="${student.phone}" required>
-</div>
-<div class="form-group">
-<label>Department *</label>
-<select id="department" required>
-<option value="1" ${student.dept_id == 1 ? 'selected' : ''}>Computer Science and Engineering</option>
-<option value="2" ${student.dept_id == 2 ? 'selected' : ''}>Information Technology</option>
-<option value="3" ${student.dept_id == 3 ? 'selected' : ''}>Electronics and Communication Engineering</option>
-<option value="4" ${student.dept_id == 4 ? 'selected' : ''}>Electrical and Electronics Engineering</option>
-</select>
-</div>
-<div class="form-group">
-<label>Semester *</label>
-<select id="semester" required>
-<option value="1" ${student.semester == 1 ? 'selected' : ''}>1st Semester</option>
-<option value="2" ${student.semester == 2 ? 'selected' : ''}>2nd Semester</option>
-<option value="3" ${student.semester == 3 ? 'selected' : ''}>3rd Semester</option>
-<option value="4" ${student.semester == 4 ? 'selected' : ''}>4th Semester</option>
-<option value="5" ${student.semester == 5 ? 'selected' : ''}>5th Semester</option>
-<option value="6" ${student.semester == 6 ? 'selected' : ''}>6th Semester</option>
-<option value="7" ${student.semester == 7 ? 'selected' : ''}>7th Semester</option>
-<option value="8" ${student.semester == 8 ? 'selected' : ''}>8th Semester</option>
-</select>
-</div>
-<div class="form-group">
-<label>Status *</label>
-<select id="status" required>
-<option value="1" ${student.is_active == 1 ? 'selected' : ''}>Active</option>
-<option value="0" ${student.is_active == 0 ? 'selected' : ''}>Inactive</option>
-</select>
-</div>
-<button type="submit" class="btn">Update Student</button>
-<button type="button" class="btn btn-danger" onclick="history.back()">Cancel</button>
-<div id="message"></div>
-</form>
-`;
-
-document.getElementById('editForm').addEventListener('submit', updateStudent);
+async function updateStudent(e) {
+    e.preventDefault();
+    const { error } = await db.from('students').update({
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        dept_id: parseInt(document.getElementById('department').value),
+        semester: parseInt(document.getElementById('semester').value),
+        is_active: document.getElementById('status').value === '1'
+    }).eq('student_id', studentId);
+    const msg = document.getElementById('message');
+    if(error){ msg.innerHTML='<div class="error">Error: '+error.message+'</div>'; }
+    else { msg.innerHTML='<div class="success">Student updated successfully!</div>'; setTimeout(()=>window.location.href='manage-students.html',1500); }
 }
-
-function updateStudent(e) {
-e.preventDefault();
-const messageDiv = document.getElementById('message');
-messageDiv.innerHTML = '';
-
-const formData = new FormData();
-formData.append('student_id', studentId);
-formData.append('name', document.getElementById('name').value);
-formData.append('email', document.getElementById('email').value);
-formData.append('phone', document.getElementById('phone').value);
-formData.append('dept_id', document.getElementById('department').value);
-formData.append('semester', document.getElementById('semester').value);
-formData.append('is_active', document.getElementById('status').value);
-
-fetch('api/admin/update_student.php', {
-method: 'POST',
-body: formData
-})
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-messageDiv.innerHTML = '<div class="success">Student updated successfully!</div>';
-setTimeout(() => {
-window.location.href = 'manage-students.html';
-}, 1500);
-} else {
-messageDiv.innerHTML = '<div class="error">Error: ' + data.message + '</div>';
-}
-})
-.catch(error => {
-messageDiv.innerHTML = '<div class="error">Error updating student</div>';
-});
-}
-</script>
 
 </body>
 </html>
