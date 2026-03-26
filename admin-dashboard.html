@@ -86,7 +86,7 @@ color:#333;
 
 Admin Dashboard
 
-<a href="admin-login.html" class="logout">Logout</a>
+<a href="#" onclick="logout()" class="logout">Logout</a>
 
 </div>
 
@@ -174,12 +174,15 @@ Admin Dashboard
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
+// Check session
+window.onload = function(){ if(!getSession().user_type || getSession().user_type !== 'admin'){ window.location.href='admin-login.html'; } };
 
-function openPage(page){
-window.location.href = page;
-}
+function openPage(page){ window.location.href = page; }
 
+function logout(){ clearSession(); window.location.href='admin-login.html'; }
 </script>
 
 </body>

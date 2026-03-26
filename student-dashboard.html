@@ -147,7 +147,7 @@ background:#ddd;
 
 <p>Exit from the system.</p>
 
-<a href="student-login.html">Logout</a>
+<a href="#" onclick="logout()">Logout</a>
 
 </div>
 
@@ -158,6 +158,13 @@ background:#ddd;
 <div class="footer">
 <p>© 2026 Student Feedback System</p>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>
+window.onload = function(){ if(!getSession().user_type || getSession().user_type !== 'student'){ window.location.href='student-login.html'; } };
+function logout(){ clearSession(); window.location.href='student-login.html'; }
+</script>
 
 </body>
 </html>

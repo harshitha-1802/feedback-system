@@ -64,6 +64,7 @@ border-radius:5px;
 <div class="header">
 <h2>Welcome Faculty &#128522;</h2>
 <p>Faculty Feedback Management System</p>
+<button onclick="logout()" style="position:absolute;right:20px;top:20px;background:red;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;">Logout</button>
 </div>
 
 <div class="container">
@@ -82,12 +83,12 @@ border-radius:5px;
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script>
-
-function openPage(){
-window.location.href="faculty-view-feedback.html";
-}
-
+window.onload = function(){ if(!getSession().user_type || getSession().user_type !== 'faculty'){ window.location.href='faculty-login.html'; } };
+function openPage(){ window.location.href="faculty-view-feedback.html"; }
+function logout(){ clearSession(); window.location.href='faculty-login.html'; }
 </script>
 
 </body>
