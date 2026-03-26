@@ -4,144 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feedback Status</title>
-
 <style>
-
-body{
-    font-family: Arial;
-    background-image: url("https://images.unsplash.com/photo-1524995997946-a1c2e315a42f");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    margin:0;
-    padding:0;
-}
-
-h2{
-    text-align:center;
-    color:white;
-    margin-top:30px;
-}
-
-.table-container{
-    width:80%;
-    margin:20px auto;
-    background:rgba(255,255,255,0.9);
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0px 0px 15px rgba(0,0,0,0.3);
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th,td{
-    padding:12px;
-    border:1px solid gray;
-    text-align:center;
-}
-
-th{
-    background:#007bff;
-    color:white;
-}
-
-tr:hover{
-    background:#f1f1f1;
-}
-
-.status-submitted{
-    color:green;
-    font-weight:bold;
-}
-
-.status-pending{
-    color:orange;
-    font-weight:bold;
-}
-
-.go-back-btn{
-    display:block;
-    width:120px;
-    margin:20px auto;
-    padding:10px;
-    background:#007bff;
-    color:white;
-    border:none;
-    border-radius:5px;
-    text-align:center;
-    cursor:pointer;
-    font-size:16px;
-    text-decoration: none;
-    transition:0.3s;
-}
-
-.go-back-btn:hover{
-    background:#0056b3;
-}
-
-.loading{
-    text-align:center;
-    color:white;
-    font-size:18px;
-    padding:40px;
-}
-
-.no-courses{
-    text-align:center;
-    padding:40px;
-    background:rgba(255,243,205,0.9);
-    border-radius:10px;
-    margin:20px auto;
-    width:80%;
-}
-
-.info-message{
-    background:rgba(23,162,184,0.9);
-    color:white;
-    padding:15px;
-    border-radius:8px;
-    margin:20px auto;
-    width:80%;
-    text-align:center;
-}
-
+body{ font-family:Arial; background-image:url("https://images.unsplash.com/photo-1524995997946-a1c2e315a42f"); background-size:cover; background-position:center; background-repeat:no-repeat; margin:0; padding:0; }
+h2{ text-align:center; color:white; margin-top:30px; }
+.table-container{ width:80%; margin:20px auto; background:rgba(255,255,255,0.9); padding:20px; border-radius:10px; box-shadow:0px 0px 15px rgba(0,0,0,0.3); }
+table{ width:100%; border-collapse:collapse; }
+th,td{ padding:12px; border:1px solid gray; text-align:center; }
+th{ background:#007bff; color:white; }
+tr:hover{ background:#f1f1f1; }
+.status-submitted{ color:green; font-weight:bold; }
+.status-pending{ color:orange; font-weight:bold; }
+.go-back-btn{ display:block; width:120px; margin:20px auto; padding:10px; background:#007bff; color:white; border:none; border-radius:5px; text-align:center; cursor:pointer; font-size:16px; }
+.loading{ text-align:center; color:white; font-size:18px; padding:40px; }
+.no-courses{ text-align:center; padding:40px; background:rgba(255,243,205,0.9); border-radius:10px; margin:20px auto; width:80%; }
+.info-message{ background:rgba(23,162,184,0.9); color:white; padding:15px; border-radius:8px; margin:20px auto; width:80%; text-align:center; }
 </style>
 </head>
-
 <body>
-
 <h2>My Feedback Status</h2>
-
 <button class="go-back-btn" onclick="goBack()">Go Back</button>
-
-<div id="loadingMessage" class="loading">
-Loading your feedback status...
-</div>
-
-<div id="infoMessage" class="info-message" style="display:none;">
-📝 This page shows whether you have submitted feedback for each course. You cannot view the actual feedback content.
-</div>
-
+<div id="loadingMessage" class="loading">Loading your feedback status...</div>
+<div id="infoMessage" class="info-message" style="display:none;">📝 This page shows whether you have submitted feedback for each course.</div>
 <div id="tableContainer" class="table-container" style="display:none;">
-<table>
-<tr>
-<th>Course</th>
-<th>Faculty</th>
-<th>Status</th>
-<th>Submitted On</th>
-</tr>
-<tbody id="statusTableBody"></tbody>
-</table>
+<table><tr><th>Course</th><th>Faculty</th><th>Status</th><th>Submitted On</th></tr>
+<tbody id="statusTableBody"></tbody></table>
 </div>
-
 <div id="noCoursesMessage" class="no-courses" style="display:none;">
-<h3>No Courses Assigned</h3>
-<p>You don't have any courses assigned yet. Please contact admin.</p>
+<h3>No Courses Assigned</h3><p>You don't have any courses assigned yet. Please contact admin.</p>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script>
@@ -153,7 +43,7 @@ async function loadFeedbackStatus() {
     const s = session.user_data;
 
     const { data: assignments } = await db.from('faculty_courses')
-        .select('course_id, faculty(name), courses(course_name)')
+        .select('course_id, faculty_id, faculty(name), courses(course_name)')
         .eq('semester', s.semester);
 
     document.getElementById('loadingMessage').style.display='none';
@@ -167,7 +57,7 @@ async function loadFeedbackStatus() {
     document.getElementById('tableContainer').style.display='block';
 
     document.getElementById('statusTableBody').innerHTML = assignments.map(a => {
-        const isSubmitted = submittedKeys.has((a.faculty?.faculty_id||'')+'_'+a.course_id);
+        const isSubmitted = submittedKeys.has(a.faculty_id+'_'+a.course_id);
         return `<tr>
             <td>${a.courses?.course_name||''}</td>
             <td>${a.faculty?.name||'Not Assigned'}</td>
@@ -176,53 +66,8 @@ async function loadFeedbackStatus() {
         </tr>`;
     }).join('');
 }
-        
-        document.getElementById('loadingMessage').style.display = 'none';
-        
-        if (result.success) {
-            if (result.courses.length === 0) {
-                document.getElementById('noCoursesMessage').style.display = 'block';
-            } else {
-                document.getElementById('infoMessage').style.display = 'block';
-                document.getElementById('tableContainer').style.display = 'block';
-                displayFeedbackStatus(result.courses);
-            }
-        } else {
-            alert('Failed to load feedback status: ' + result.message);
-        }
-    } catch (error) {
-        document.getElementById('loadingMessage').innerHTML = 
-            '<p style="color:red;">Failed to load data. Please try again.</p>';
-    }
-}
 
-function displayFeedbackStatus(courses) {
-    const tbody = document.getElementById('statusTableBody');
-    tbody.innerHTML = '';
-    
-    courses.forEach(course => {
-        const row = document.createElement('tr');
-        
-        const statusClass = course.feedback_submitted ? 'status-submitted' : 'status-pending';
-        const statusText = course.feedback_submitted ? '✅ Submitted' : '⏳ Pending';
-        const submittedDate = course.feedback_submitted ? 'Completed' : '-';
-        
-        row.innerHTML = `
-            <td>${course.course_name}</td>
-            <td>${course.faculty_name || 'Not Assigned'}</td>
-            <td class="${statusClass}">${statusText}</td>
-            <td>${submittedDate}</td>
-        `;
-        
-        tbody.appendChild(row);
-    });
-}
-
-// Load status when page loads
 window.onload = loadFeedbackStatus;
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-
 </body>
 </html>
